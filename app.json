@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "TypeVision",
+    "slug": "typevision",
+    "version": "1.0.0",
+    "platforms": ["ios", "android", "web"],
+    "sdkVersion": "53.0.0",
+    "orientation": "portrait",
+    "splash": {
+      "backgroundColor": "#F5F5F5"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    }
+  }
+}
