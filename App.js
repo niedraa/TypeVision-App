@@ -3,6 +3,7 @@ import { SafeAreaView, StyleSheet, Text, View, StatusBar, TouchableOpacity, Plat
 import ShopScreen from './ShopScreen';
 import StoryScreen from './screens/StoryScreen';
 import MultiplayerScreen from './screens/MultiplayerScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SuccessScreen from './SuccessScreen';
 import CancelScreen from './CancelScreen';
@@ -76,7 +77,18 @@ export default function App() {
   if (currentScreen === 'multiplayer') {
     return (
       <SafeAreaView style={styles.container}>
-        <MultiplayerScreen onBack={() => setCurrentScreen('home')} />
+        <MultiplayerScreen 
+          onBack={() => setCurrentScreen('home')} 
+          currentUser={currentUser}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (currentScreen === 'settings') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <SettingsScreen onBack={() => setCurrentScreen('home')} />
       </SafeAreaView>
     );
   }
@@ -156,7 +168,10 @@ export default function App() {
             <Text style={styles.menuButtonText}>Shop</Text>
           </AnimatedButton>
 
-          <AnimatedButton style={styles.menuButton}>
+          <AnimatedButton 
+            style={styles.menuButton}
+            onPress={() => setCurrentScreen('settings')}
+          >
             <Text style={styles.menuButtonText}>Settings</Text>
           </AnimatedButton>
 
@@ -165,13 +180,6 @@ export default function App() {
             onPress={() => setCurrentScreen('profile')}
           >
             <Text style={styles.menuButtonText}>Profile</Text>
-          </AnimatedButton>
-
-          <AnimatedButton 
-            style={[styles.menuButton, styles.logoutButton]}
-            onPress={handleLogout}
-          >
-            <Text style={styles.logoutButtonText}>Se déconnecter</Text>
           </AnimatedButton>
         </View>
       </SafeAreaView>
@@ -264,16 +272,6 @@ const styles = StyleSheet.create({
   },
   profileButton: {
     marginTop: 30,
-  },
-  logoutButton: {
-    backgroundColor: '#E53E3E',
-    marginTop: 20,
-  },
-  logoutButtonText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    textAlign: 'center',
   },
   menuButtonText: {
     fontSize: 20,

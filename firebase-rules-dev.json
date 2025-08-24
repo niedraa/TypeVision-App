@@ -1,0 +1,30 @@
+{
+  "rules": {
+    ".read": "auth != null || true",
+    ".write": "auth != null || true",
+    "globalRooms": {
+      ".read": true,
+      ".write": true,
+      "$roomId": {
+        ".read": true,
+        ".write": true,
+        "players": {
+          ".read": true,
+          ".write": true
+        },
+        "gameState": {
+          ".read": true,
+          ".write": true
+        }
+      }
+    },
+    "stats": {
+      ".read": true,
+      ".write": true
+    },
+    "presence": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

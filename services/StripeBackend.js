@@ -1,7 +1,7 @@
 // Backend minimal pour gérer Stripe de manière sécurisée
-// Ce fichier simule un backend - en production, utilisez un vrai serveur
+// ⚠️ ATTENTION: Ce code est prévu pour un vrai backend, pas pour production côté client
 
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'your_stripe_secret_key_here';
+const STRIPE_SECRET_KEY = 'sk_live_votre_cle_secrete_ici';
 const STRIPE_API_URL = 'https://api.stripe.com/v1';
 
 export class StripeBackend {

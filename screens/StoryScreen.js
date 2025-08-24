@@ -1,120 +1,347 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Animated,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SlideTransition } from '../components/Transitions';
 import { AnimatedButton } from '../components/AnimatedButton';
+import { gameData } from '../data/gameData';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import WorldLevelsScreen from './WorldLevelsScreen';
 
-// Composant pour l'icône volcanique
-const VolcanicIcon = () => (
-  <View style={[styles.iconContainer, { backgroundColor: '#FF6B35' }]}>
-    <View style={styles.volcanicBase} />
-    <View style={styles.volcanicPeak} />
-    <View style={styles.volcanicSmoke1} />
-    <View style={styles.volcanicSmoke2} />
-    <View style={styles.volcanicSmoke3} />
-  </View>
-);
-
-// Composant pour l'icône aquatique
-const AquaticIcon = () => (
-  <View style={[styles.iconContainer, { backgroundColor: '#00B4DB' }]}>
-    <View style={styles.aquaticFish} />
-    <View style={styles.aquaticCoral1} />
-    <View style={styles.aquaticCoral2} />
-    <View style={styles.aquaticBubble1} />
-    <View style={styles.aquaticBubble2} />
-    <View style={styles.aquaticBubble3} />
-  </View>
-);
-
-// Composant pour l'icône nuageuse
-const CloudyIcon = () => (
-  <View style={[styles.iconContainer, { backgroundColor: '#74b9ff' }]}>
-    <View style={styles.cloudMain} />
-    <View style={styles.cloudLeft} />
-    <View style={styles.cloudRight} />
-    <View style={styles.cloudSmall} />
-  </View>
-);
+const { width } = Dimensions.get('window');
 
 const StoryScreen = ({ onBack }) => {
-  const storyModes = [
-    {
-      id: 1,
-      title: 'Volcanique',
-      bgGradient: {
-        colors: ['#FF6B35', '#F7931E'],
-        start: { x: 0, y: 0 },
-        end: { x: 1, y: 1 }
-      }
-    },
-    {
-      id: 2,
-      title: 'Aquatique',
-      bgGradient: {
-        colors: ['#00B4DB', '#0083B0'],
-        start: { x: 0, y: 0 },
-        end: { x: 1, y: 1 }
-      }
-    },
-    {
-      id: 3,
-      title: 'Nuageux',
-      bgGradient: {
-        colors: ['#74b9ff', '#a29bfe'],
-        start: { x: 0, y: 0 },
-        end: { x: 1, y: 1 }
-      }
-    }
-  ];
+  const [worldUnlockStatus, setWorldUnlockStatus] = useState({});
+  const [selectedWorld, setSelectedWorld] = useState(null);
+  const [worldProgress, setWorldProgress] = useState({});
+  const fadeAnim = new Animated.Value(0);
 
-  const handleStorySelect = (story) => {
-    console.log('Histoire sélectionnée:', story.title);
-    // Ici on pourrait naviguer vers l'histoire spécifique
+  // Données de fallback au cas où gameData ne serait pas disponible
+  const fallbackWorlds = {
+    volcanic: {
+      id: 'volcanic',
+      name: 'Royaume des Flammes',
+      icon: '🌋',
+      color: '#FF6B35',
+      description: '🔥 Défiez les volcans en éruption ! Tapez plus vite que la lave qui dévale !',
+      levels: Array.from({length: 5}, (_, i) => ({
+        id: i + 1,
+        difficulty: Math.min(i + 1, 3),
+        words: ['test', 'mot', 'niveau']
+      }))
+    },
+    aquatic: {
+      id: 'aquatic',
+      name: 'Océan Mystérieux',
+      icon: '🌊',
+      color: '#4FC3F7',
+      description: '🐠 Plongez dans les abysses et découvrez les secrets des profondeurs !',
+      levels: Array.from({length: 5}, (_, i) => ({
+        id: i + 1,
+        difficulty: Math.min(i + 1, 3),
+        words: ['test', 'mot', 'niveau']
+      }))
+    },
+    cloudy: {
+      id: 'cloudy',
+      name: 'Citadelle Céleste',
+      icon: '☁️',
+      color: '#9E9E9E',
+      description: '⚡ Volez parmi les nuages magiques et maîtrisez les vents divins !',
+      levels: Array.from({length: 5}, (_, i) => ({
+        id: i + 1,
+        difficulty: Math.min(i + 1, 3),
+        words: ['test', 'mot', 'niveau']
+      }))
+    },
+    forest: {
+      id: 'forest',
+      name: 'Forêt Enchantée',
+      icon: '🌲',
+      color: '#4CAF50',
+      description: '🧚‍♀️ Explorez la forêt mystique où chaque mot révèle un sortilège !',
+      levels: Array.from({length: 5}, (_, i) => ({
+        id: i + 1,
+        difficulty: Math.min(i + 1, 3),
+        words: ['test', 'mot', 'niveau']
+      }))
+    },
+    crystal: {
+      id: 'crystal',
+      name: 'Grotte de Cristal',
+      icon: '💎',
+      color: '#9C27B0',
+      description: '✨ Découvrez les gemmes cachées dans les cavernes scintillantes !',
+      levels: Array.from({length: 5}, (_, i) => ({
+        id: i + 1,
+        difficulty: Math.min(i + 1, 3),
+        words: ['test', 'mot', 'niveau']
+      }))
+    }
   };
 
-  return (
-    <SlideTransition direction="right">
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F5F5F5" />
+
+  useEffect(() => {
+    loadUnlockStatus();
+    loadProgress();
+    
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const loadUnlockStatus = async () => {
+    try {
+      const status = {};
+      
+      // Vérification de sécurité
+      if (!gameData || !gameData.worlds) {
+        console.log('gameData non disponible, utilisation des données par défaut');
+        setWorldUnlockStatus({ volcanic: true, aquatic: false, cloudy: false });
+        return;
+      }
+      
+      const worldIds = Object.keys(gameData.worlds);
+      console.log('worldIds trouvés:', worldIds);
+      
+      for (const worldId of worldIds) {
+        if (worldId === 'volcanic') {
+          status[worldId] = true; // Premier monde toujours débloqué
+        } else {
+          const unlocked = await AsyncStorage.getItem(`world_${worldId}_unlocked`);
+          status[worldId] = unlocked === 'true';
+        }
+      }
+      
+      console.log('Status des mondes:', status);
+      setWorldUnlockStatus(status);
+    } catch (error) {
+      console.log('Erreur chargement statut:', error);
+      // Par défaut, seul le monde volcanique est débloqué
+      setWorldUnlockStatus({ volcanic: true, aquatic: false, cloudy: false });
+    }
+  };
+
+  const loadProgress = async () => {
+    try {
+      const progress = {};
+      
+      // Vérification de sécurité
+      if (!gameData || !gameData.worlds) {
+        setWorldProgress({});
+        return;
+      }
+      
+      const worldIds = Object.keys(gameData.worlds);
+      
+      for (const worldId of worldIds) {
+        const worldProgress = await AsyncStorage.getItem(`progress_${worldId}`);
+        if (worldProgress) {
+          const parsed = JSON.parse(worldProgress);
+          const completedLevels = Object.values(parsed).filter(p => p.completed).length;
+          const totalStars = Object.values(parsed).reduce((sum, p) => sum + (p.stars || 0), 0);
+          const totalLevels = gameData.worlds[worldId].levels.length;
+          
+          progress[worldId] = {
+            completedLevels,
+            totalLevels,
+            totalStars,
+            completion: Math.round((completedLevels / totalLevels) * 100),
+          };
+        } else {
+          progress[worldId] = {
+            completedLevels: 0,
+            totalLevels: gameData.worlds[worldId].levels.length,
+            totalStars: 0,
+            completion: 0,
+          };
+        }
+      }
+      
+      setWorldProgress(progress);
+    } catch (error) {
+      console.log('Erreur chargement progression:', error);
+    }
+  };
+
+  const selectWorld = (worldId) => {
+    const isUnlocked = worldUnlockStatus[worldId];
+    if (isUnlocked) {
+      setSelectedWorld(worldId);
+    }
+  };
+
+  const renderWorld = (worldId) => {
+    // Utiliser les données principales ou de fallback
+    const world = (gameData && gameData.worlds && gameData.worlds[worldId]) 
+      ? gameData.worlds[worldId] 
+      : fallbackWorlds[worldId];
+      
+    if (!world) {
+      return null;
+    }
+    
+    const isUnlocked = worldUnlockStatus[worldId] !== false; // Par défaut débloqué si pas d'info
+    const progress = worldProgress[worldId] || { completedLevels: 0, totalLevels: 5, totalStars: 0, completion: 0 };
+
+    // Couleurs thématiques pour chaque monde
+    const worldColors = {
+      world1: { primary: '#4CAF50', secondary: '#E8F5E8', accent: '#2E7D32' },
+      world2: { primary: '#2196F3', secondary: '#E3F2FD', accent: '#1565C0' },
+      world3: { primary: '#FF9800', secondary: '#FFF3E0', accent: '#E65100' },
+      world4: { primary: '#9C27B0', secondary: '#F3E5F5', accent: '#6A1B9A' },
+      world5: { primary: '#F44336', secondary: '#FFEBEE', accent: '#C62828' },
+    };
+
+    const colors = worldColors[worldId] || { primary: '#6c757d', secondary: '#f8f9fa', accent: '#495057' };
+
+    return (
+      <TouchableOpacity
+        key={worldId}
+        style={[
+          styles.worldCard,
+          !isUnlocked && styles.worldCardLocked,
+          isUnlocked && { 
+            borderLeftWidth: 5, 
+            borderLeftColor: colors.primary,
+            backgroundColor: colors.secondary
+          }
+        ]}
+        onPress={() => selectWorld(worldId)}
+        disabled={!isUnlocked}
+        activeOpacity={0.8}
+      >
+        <View style={styles.worldHeader}>
+          <View style={[styles.worldIconContainer, { 
+            backgroundColor: isUnlocked ? colors.primary : '#e9ecef' 
+          }]}>
+            <Text style={[styles.worldIcon, { 
+              color: isUnlocked ? '#ffffff' : '#6c757d' 
+            }]}>
+              {world.icon}
+            </Text>
+          </View>
+          {!isUnlocked && (
+            <View style={styles.lockIcon}>
+              <Ionicons name="lock-closed" size={20} color="#6c757d" />
+            </View>
+          )}
+        </View>
         
-        {/* Bouton retour */}
-        <AnimatedButton 
-          style={styles.backButton}
-          onPress={onBack}
-        >
-          <Text style={styles.backArrow}>{'<'}</Text>
-        </AnimatedButton>
+        <Text style={[
+          styles.worldName,
+          !isUnlocked && styles.worldNameLocked
+        ]}>
+          {world.name}
+        </Text>
+        
+        <Text style={[
+          styles.worldDescription,
+          !isUnlocked && styles.worldDescriptionLocked
+        ]}>
+          {world.description}
+        </Text>
 
+        {isUnlocked && (
+          <View style={styles.progressContainer}>
+            <View style={styles.progressRow}>
+              <Text style={[styles.progressText, { color: colors.accent }]}>
+                {progress.completedLevels}/{progress.totalLevels} niveaux
+              </Text>
+              <Text style={[styles.progressText, { color: colors.primary }]}>
+                ⭐ {progress.totalStars}
+              </Text>
+            </View>
+            
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill,
+                  { 
+                    width: `${progress.completion}%`,
+                    backgroundColor: colors.primary
+                  }
+                ]} 
+              />
+            </View>
+            
+            <Text style={[styles.completionText, { color: colors.accent }]}>
+              {progress.completion}% terminé
+            </Text>
+          </View>
+        )}
+
+        {!isUnlocked && (
+          <View style={styles.lockedContainer}>
+            <Text style={styles.lockedText}>
+              Terminez le monde précédent pour débloquer
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  if (selectedWorld) {
+    // Vérifier si WorldLevelsScreen existe et si le monde est disponible
+    const worldExists = (gameData && gameData.worlds && gameData.worlds[selectedWorld]) 
+      || fallbackWorlds[selectedWorld];
+      
+    if (worldExists) {
+      return (
+        <WorldLevelsScreen
+          worldId={selectedWorld}
+          onBack={() => {
+            setSelectedWorld(null);
+            loadProgress(); // Recharger la progression
+          }}
+        />
+      );
+    } else {
+      // Si le monde n'existe pas, retourner à la sélection
+      setSelectedWorld(null);
+    }
+  }
+
+  return (
+    <SlideTransition>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Story Mode</Text>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Ionicons name="arrow-back" size={24} color="black" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Mode Histoire</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        <View style={styles.storiesContainer}>
-          {storyModes.map((story, index) => {
-            let IconComponent;
-            if (index === 0) IconComponent = VolcanicIcon;
-            else if (index === 1) IconComponent = AquaticIcon;
-            else IconComponent = CloudyIcon;
-
-            return (
-              <AnimatedButton
-                key={story.id}
-                style={styles.storyItem}
-                onPress={() => handleStorySelect(story)}
-              >
-                <IconComponent />
-                
-                <View style={styles.textContainer}>
-                  <Text style={styles.storyTitle}>{story.title}</Text>
-                </View>
-                
-                <View style={styles.arrowContainer}>
-                  <Text style={styles.arrow}>{'>'}</Text>
-                </View>
-              </AnimatedButton>
-            );
-          })}
-        </View>
+        {/* Worlds */}
+        <ScrollView 
+          style={styles.worldsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ opacity: 1 }}>
+            {(gameData && gameData.worlds 
+              ? Object.keys(gameData.worlds) 
+              : Object.keys(fallbackWorlds)
+            ).map((worldId) => renderWorld(worldId))}
+          </View>
+          
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
       </SafeAreaView>
     </SlideTransition>
   );
@@ -123,235 +350,214 @@ const StoryScreen = ({ onBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-  },
-  backArrow: {
-    fontSize: 18,
-    color: '#2C3E50',
-    fontWeight: '600',
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 30,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#2C3E50',
-    textAlign: 'left',
-  },
-  storiesContainer: {
-    paddingHorizontal: 20,
-    gap: 20,
-  },
-  storyItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 10,
+    backgroundColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+  backButton: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 20,
+    backgroundColor: '#f1f3f4',
+    borderRadius: 22,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1a1a1a',
+    textAlign: 'center',
+  },
+  placeholder: {
+    width: 44,
+  },
+  introContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 5,
+    marginTop: 5,
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  introTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  introText: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  worldsContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  worldCard: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6.84,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
-  // Styles pour l'icône volcanique
-  volcanicBase: {
-    position: 'absolute',
-    bottom: 10,
-    width: 50,
-    height: 30,
-    backgroundColor: '#8B4513',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-  },
-  volcanicPeak: {
-    position: 'absolute',
-    bottom: 30,
-    width: 20,
-    height: 20,
-    backgroundColor: '#FF4500',
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-  },
-  volcanicSmoke1: {
-    position: 'absolute',
-    top: 10,
-    left: 35,
-    width: 8,
-    height: 8,
-    backgroundColor: '#FFE4B5',
-    borderRadius: 4,
-    opacity: 0.8,
-  },
-  volcanicSmoke2: {
-    position: 'absolute',
-    top: 15,
-    left: 40,
-    width: 6,
-    height: 6,
-    backgroundColor: '#FFFF99',
-    borderRadius: 3,
+  worldCardLocked: {
     opacity: 0.6,
+    backgroundColor: '#f8f9fa',
   },
-  volcanicSmoke3: {
-    position: 'absolute',
-    top: 8,
-    left: 30,
-    width: 5,
-    height: 5,
-    backgroundColor: '#FFFACD',
-    borderRadius: 2.5,
-    opacity: 0.7,
+  worldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  // Styles pour l'icône aquatique
-  aquaticFish: {
-    position: 'absolute',
-    left: 15,
-    top: 25,
-    width: 16,
-    height: 10,
-    backgroundColor: '#FF8C42',
-    borderRadius: 8,
+  worldIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  aquaticCoral1: {
-    position: 'absolute',
-    bottom: 10,
-    left: 20,
-    width: 12,
-    height: 25,
-    backgroundColor: '#2E8B57',
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
+  worldIcon: {
+    fontSize: 28,
+    fontWeight: 'bold',
   },
-  aquaticCoral2: {
-    position: 'absolute',
-    bottom: 10,
-    right: 25,
-    width: 8,
-    height: 20,
-    backgroundColor: '#32CD32',
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+  lockIcon: {
+    backgroundColor: 'rgba(108, 117, 125, 0.2)',
+    borderRadius: 20,
+    padding: 8,
   },
-  aquaticBubble1: {
-    position: 'absolute',
-    top: 15,
-    right: 20,
-    width: 6,
-    height: 6,
-    backgroundColor: '#E0F6FF',
-    borderRadius: 3,
-    opacity: 0.8,
+  worldName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
   },
-  aquaticBubble2: {
-    position: 'absolute',
-    top: 10,
-    right: 30,
-    width: 4,
-    height: 4,
-    backgroundColor: '#F0F8FF',
-    borderRadius: 2,
-    opacity: 0.9,
+  worldNameLocked: {
+    color: '#6c757d',
   },
-  aquaticBubble3: {
-    position: 'absolute',
-    top: 20,
-    right: 35,
-    width: 3,
-    height: 3,
-    backgroundColor: '#F8F8FF',
-    borderRadius: 1.5,
-    opacity: 0.7,
+  worldDescription: {
+    fontSize: 15,
+    color: '#495057',
+    lineHeight: 20,
+    marginBottom: 20,
   },
-  // Styles pour l'icône nuageuse
-  cloudMain: {
-    position: 'absolute',
-    top: 25,
-    width: 35,
-    height: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
+  worldDescriptionLocked: {
+    color: '#adb5bd',
   },
-  cloudLeft: {
-    position: 'absolute',
-    top: 30,
-    left: 15,
-    width: 15,
-    height: 15,
-    backgroundColor: '#F0F8FF',
-    borderRadius: 7.5,
+  progressContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
   },
-  cloudRight: {
-    position: 'absolute',
-    top: 30,
-    right: 15,
-    width: 15,
-    height: 15,
-    backgroundColor: '#F0F8FF',
-    borderRadius: 7.5,
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  cloudSmall: {
-    position: 'absolute',
-    top: 15,
-    right: 25,
-    width: 12,
-    height: 8,
-    backgroundColor: '#E6F3FF',
-    borderRadius: 6,
-  },
-  storyIcon: {
-    fontSize: 40,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  storyTitle: {
-    fontSize: 24,
+  progressText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#2C3E50',
   },
-  arrowContainer: {
-    marginLeft: 10,
+  progressBar: {
+    height: 8,
+    backgroundColor: '#e9ecef',
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
   },
-  arrow: {
-    fontSize: 20,
-    color: '#7F8C8D',
+  progressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  completionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  lockedContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    borderStyle: 'dashed',
+  },
+  lockedText: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  bottomSpacing: {
+    height: 20,
+  },
+  bottomSpacing: {
+    height: 30,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#007AFF',
     fontWeight: '600',
   },
 });
