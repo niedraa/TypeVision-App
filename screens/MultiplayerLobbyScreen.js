@@ -14,12 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 // Utiliser le service multijoueur mondial
 import { globalMultiplayerService } from '../services/globalMultiplayerService';
 import { gameData } from '../data/gameData';
+import InlineCountdown from '../components/InlineCountdown';
 
 const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
   const [players, setPlayers] = useState({});
   const [room, setRoom] = useState(roomData || {});
   const [isReady, setIsReady] = useState(false);
   const [isHost, setIsHost] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(false);
 
   useEffect(() => {
     // Vérifier si roomData existe et a les bonnes propriétés
@@ -46,8 +48,13 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
         setRoom(updatedRoomData);
         setPlayers(updatedRoomData.players || {});
         
-        // Auto-start quand tous les joueurs sont prêts
-        if (updatedRoomData.status === 'countdown' || updatedRoomData.status === 'playing') {
+        // Détecter le début du compte à rebours pour les parties rapides
+        if (updatedRoomData.status === 'countdown' && updatedRoomData.settings?.isPublic) {
+          setShowCountdown(true);
+        }
+        
+        // Auto-start quand le jeu commence réellement
+        if (updatedRoomData.status === 'playing') {
           onStartGame(updatedRoomData);
         }
       }
@@ -111,6 +118,11 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
     } catch (error) {
       console.log('Erreur partage:', error);
     }
+  };
+
+  const handleCountdownEnd = () => {
+    setShowCountdown(false);
+    // Le jeu devrait commencer automatiquement grâce au listener
   };
 
   const leaveRoom = async () => {
@@ -183,6 +195,16 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
           {playersArray.length}/{room.settings?.maxPlayers || 4} joueurs • {readyCount} prêt(s)
         </Text>
       </View>
+
+      {/* Countdown pour les parties rapides */}
+      {showCountdown && room.settings?.isPublic && (
+        <View style={styles.countdownSection}>
+          <InlineCountdown 
+            roomId={room.id} 
+            onCountdownEnd={handleCountdownEnd}
+          />
+        </View>
+      )}
 
       {/* Players List */}
       <View style={styles.playersSection}>
@@ -374,6 +396,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#3B82F6',
+  },
+  countdownSection: {
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
   actionsSection: {
     paddingHorizontal: 20,

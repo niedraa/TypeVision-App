@@ -22,16 +22,29 @@ const MultiplayerGameScreen = ({ roomData, onGameComplete, onBack }) => {
   const [isFinished, setIsFinished] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [errors, setErrors] = useState(0);
-  const [countdown, setCountdown] = useState(3);
   const [gameStarted, setGameStarted] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
 
   useEffect(() => {
+    console.log('📊 RoomData reçue:', JSON.stringify(roomData, null, 2));
+    
     if (roomData?.gameState?.currentText) {
       setGameText(roomData.gameState.currentText.text || '');
-      startCountdown();
+      
+      console.log('🚀 Démarrage immédiat du jeu - suppression du countdown');
+      
+      // Toujours démarrer directement le jeu, peu importe le type de partie
+      setGameStarted(true);
+      setStartTime(Date.now());
+      
+      // Focus sur l'input après un petit délai
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
     }
 
     // Écouter les changements des joueurs
@@ -55,23 +68,6 @@ const MultiplayerGameScreen = ({ roomData, onGameComplete, onBack }) => {
       if (unsubscribePlayers) unsubscribePlayers();
     };
   }, [roomData]);
-
-  const startCountdown = () => {
-    const countdownInterval = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          setGameStarted(true);
-          setStartTime(Date.now());
-          if (inputRef.current) {
-            inputRef.current.focus();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
 
   const calculateStats = () => {
     if (!startTime || currentIndex === 0) return { wpm: 0, accuracy: 100 };
@@ -220,18 +216,6 @@ const MultiplayerGameScreen = ({ roomData, onGameComplete, onBack }) => {
     );
   }
 
-  if (countdown > 0) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.countdownContainer}>
-          <Text style={styles.countdownText}>{countdown}</Text>
-          <Text style={styles.countdownLabel}>Préparez-vous...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -276,21 +260,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-  },
-  countdownContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  countdownText: {
-    fontSize: 80,
-    fontWeight: 'bold',
-    color: '#3B82F6',
-  },
-  countdownLabel: {
-    fontSize: 24,
-    color: '#666',
-    marginTop: 20,
   },
   playersProgress: {
     maxHeight: 200,
@@ -411,20 +380,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   resultPosition: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#3B82F6',
-    width: 40,
+    marginRight: 15,
+    minWidth: 40,
   },
   resultName: {
-    flex: 1,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginLeft: 15,
+    flex: 1,
   },
   resultStats: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
   },
 });

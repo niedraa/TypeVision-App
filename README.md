@@ -17,7 +17,6 @@ TypeVision est une application mobile de frappe tactile moderne développée ave
 - Gestion du compte
 
 ### 🎮 Modes de jeu
-- **Story Mode** : Mode histoire avec progression
 - **Multiplayer** : Mode multijoueur avec :
   - Partie rapide
   - Création/Rejoindre un salon
@@ -53,7 +52,6 @@ TypeVision-final/
 ├── screens/               # Écrans de l'application
 │   ├── LoginScreen.js     # Écran de connexion
 │   ├── ProfileScreen.js   # Écran de profil
-│   ├── StoryScreen.js     # Mode histoire
 │   ├── MultiplayerScreen.js # Mode multijoueur
 │   └── LoadingScreen.js   # Écran de chargement
 ├── components/            # Composants réutilisables

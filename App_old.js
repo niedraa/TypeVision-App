@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, StyleSheet, Text, View, StatusBar, TouchableOpacity, Platform } from 'react-native';
 import ShopScreen from './ShopScreen';
+import StoryScreen from './screens/StoryScreen';
 import MultiplayerScreen from './screens/MultiplayerScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -14,8 +15,7 @@ import { AnimatedButton } from './components/AnimatedButton';
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser] = useState({ username: 'Joueur', id: 'user123' }); // Utilisateur par défaut
 
   useEffect(() => {
     // Simuler un temps de chargement initial
@@ -26,30 +26,9 @@ export default function App() {
     return () => clearTimeout(loadingTimer);
   }, []);
 
-  const handleLogin = (user) => {
-    setCurrentUser(user);
-    setIsAuthenticated(true);
-    setCurrentScreen('home');
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setIsAuthenticated(false);
-    setCurrentScreen('home');
-  };
-
-  const handleUpdateUser = (updatedUser) => {
-    setCurrentUser(updatedUser);
-  };
-
   // Écran de chargement
   if (isLoading) {
     return <LoadingScreen />;
-  }
-
-  // Écran de connexion si pas authentifié
-  if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />;
   }
 
   if (currentScreen === 'profile') {
@@ -58,9 +37,17 @@ export default function App() {
         <ProfileScreen 
           onBack={() => setCurrentScreen('home')}
           user={currentUser}
-          onUpdateUser={handleUpdateUser}
-          onLogout={handleLogout}
+          onUpdateUser={(user) => {}} // Fonction vide
+          onLogout={() => setCurrentScreen('home')} // Retour à l'accueil au lieu de logout
         />
+      </SafeAreaView>
+    );
+  }
+
+  if (currentScreen === 'story') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StoryScreen onBack={() => setCurrentScreen('home')} />
       </SafeAreaView>
     );
   }
@@ -117,54 +104,67 @@ export default function App() {
   return (
     <FadeTransition>
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F5F5F5" />
+        <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
         
-        {/* Header avec logo et titre */}
-        <View style={styles.header}>
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
             <View style={styles.logo}>
-              <View style={styles.logoLine1} />
-              <View style={styles.logoLine2} />
-              <View style={styles.logoLine3} />
+              <Text style={styles.logoText}>⚡</Text>
             </View>
           </View>
+          
           <Text style={styles.title}>TypeVision</Text>
-          {currentUser && (
-            <Text style={styles.welcomeText}>
-              Bienvenue, {currentUser.username}
-            </Text>
-          )}
+          <Text style={styles.subtitle}>Tapez à la vitesse de l'éclair</Text>
+          
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>150+</Text>
+              <Text style={styles.statLabel}>WPM Max</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>99%</Text>
+              <Text style={styles.statLabel}>Précision</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Menu principal */}
-        <View style={styles.menuContainer}>
-          <AnimatedButton 
-            style={styles.menuButton}
+        {/* Main Action */}
+        <View style={styles.actionSection}>
+          <TouchableOpacity 
+            style={styles.playButton}
             onPress={() => setCurrentScreen('multiplayer')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.menuButtonText}>Multiplayer</Text>
-          </AnimatedButton>
+            <Text style={styles.playButtonText}>🚀 Prêt à jouer</Text>
+            <Text style={styles.playButtonSubtext}>Rejoindre une partie rapide</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.orText}>ou</Text>
+          
+          <View style={styles.secondaryActions}>
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => setCurrentScreen('story')}
+            >
+              <Text style={styles.secondaryButtonText}>📖 Mode Histoire</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => setCurrentScreen('settings')}
+            >
+              <Text style={styles.secondaryButtonText}>⚙️ Paramètres</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-          <AnimatedButton
-            style={styles.menuButton}
-            onPress={() => setCurrentScreen('shop')}
-          >
-            <Text style={styles.menuButtonText}>Shop</Text>
-          </AnimatedButton>
-
-          <AnimatedButton 
-            style={styles.menuButton}
-            onPress={() => setCurrentScreen('settings')}
-          >
-            <Text style={styles.menuButtonText}>Settings</Text>
-          </AnimatedButton>
-
-          <AnimatedButton 
-            style={[styles.menuButton, styles.profileButton]}
-            onPress={() => setCurrentScreen('profile')}
-          >
-            <Text style={styles.menuButtonText}>Profile</Text>
-          </AnimatedButton>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Testez vos compétences contre des joueurs du monde entier
+          </Text>
         </View>
       </SafeAreaView>
     </FadeTransition>
@@ -179,12 +179,12 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 10,
+    paddingTop: 60,
+    paddingBottom: 40,
     WebkitBoxAlign: 'center', // Safari fix
   },
   logoContainer: {
-    marginBottom: 10,
+    marginBottom: 20,
   },
   logo: {
     width: 50,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   menuContainer: {
     flex: 1,
     paddingHorizontal: 40,
-    paddingTop: 60,
+    paddingTop: 20,
     justifyContent: 'center',
     WebkitBoxPack: 'center', // Safari fix
   },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,29 +9,75 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Vibration,
+  Linking,
 } from 'react-native';
 import { AnimatedButton } from '../components/AnimatedButton';
 import { SlideTransition } from '../components/Transitions';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SettingsScreen({ onBack }) {
   const [settings, setSettings] = useState({
     soundEnabled: true,
     vibrationEnabled: true,
-    notificationsEnabled: true,
-    autoSaveEnabled: true,
     darkModeEnabled: false,
     highContrastEnabled: false,
-    showTipsEnabled: true,
-    analyticsEnabled: true,
+    notificationsEnabled: true,
   });
 
+  // Charger les paramètres au démarrage
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const savedSettings = await AsyncStorage.getItem('userSettings');
+      if (savedSettings) {
+        setSettings(JSON.parse(savedSettings));
+      }
+    } catch (error) {
+      console.log('Erreur lors du chargement des paramètres:', error);
+    }
+  };
+
+  const saveSettings = async (newSettings) => {
+    try {
+      await AsyncStorage.setItem('userSettings', JSON.stringify(newSettings));
+    } catch (error) {
+      console.log('Erreur lors de la sauvegarde des paramètres:', error);
+    }
+  };
+
   const toggleSetting = (settingKey) => {
-    setSettings(prev => ({
-      ...prev,
-      [settingKey]: !prev[settingKey]
-    }));
+    const newSettings = {
+      ...settings,
+      [settingKey]: !settings[settingKey]
+    };
+    
+    setSettings(newSettings);
+    saveSettings(newSettings);
+
+    // Actions spécifiques selon le paramètre
+    if (settingKey === 'vibrationEnabled' && newSettings.vibrationEnabled) {
+      // Test de vibration quand on active
+      Vibration.vibrate(100);
+    }
+
+    if (settingKey === 'soundEnabled') {
+      // Ici on pourrait jouer un son de test
+      Alert.alert('Sons', newSettings.soundEnabled ? 'Sons activés' : 'Sons désactivés');
+    }
+
+    if (settingKey === 'darkModeEnabled') {
+      Alert.alert('Mode sombre', 'Cette fonctionnalité sera appliquée au prochain redémarrage de l\'application');
+    }
+
+    if (settingKey === 'notificationsEnabled') {
+      Alert.alert('Notifications', newSettings.notificationsEnabled ? 'Notifications activées' : 'Notifications désactivées');
+    }
   };
 
   const handleResetProgress = () => {
@@ -46,8 +92,14 @@ export default function SettingsScreen({ onBack }) {
         {
           text: "Réinitialiser",
           style: "destructive",
-          onPress: () => {
-            Alert.alert("Progrès réinitialisés", "Tous vos progrès ont été supprimés.");
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('userProgress');
+              await AsyncStorage.removeItem('gameStats');
+              Alert.alert("Succès", "Tous vos progrès ont été réinitialisés.");
+            } catch (error) {
+              Alert.alert("Erreur", "Impossible de réinitialiser les progrès.");
+            }
           }
         }
       ]
@@ -66,9 +118,81 @@ export default function SettingsScreen({ onBack }) {
         {
           text: "Supprimer",
           style: "destructive",
-          onPress: () => {
-            Alert.alert("Compte supprimé", "Votre compte a été supprimé avec succès.");
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              Alert.alert("Compte supprimé", "Votre compte et toutes vos données ont été supprimés.");
+            } catch (error) {
+              Alert.alert("Erreur", "Impossible de supprimer le compte.");
+            }
           }
+        }
+      ]
+    );
+  };
+
+  const openHelp = () => {
+    Alert.alert(
+      "Centre d'aide",
+      "Besoin d'aide ? Voici les options disponibles :",
+      [
+        {
+          text: "FAQ",
+          onPress: () => Alert.alert("FAQ", "Questions fréquemment posées :\n\n• Comment jouer en multijoueur ?\n• Comment améliorer ma vitesse ?\n• Comment changer mes paramètres ?")
+        },
+        {
+          text: "Contact",
+          onPress: () => Alert.alert("Contact", "Contactez-nous à : support@typevision.app")
+        },
+        {
+          text: "Fermer",
+          style: "cancel"
+        }
+      ]
+    );
+  };
+
+  const reportProblem = () => {
+    Alert.alert(
+      "Signaler un problème",
+      "Décrivez le problème rencontré :",
+      [
+        {
+          text: "Bug technique",
+          onPress: () => Alert.alert("Merci", "Votre signalement de bug a été envoyé à l'équipe technique.")
+        },
+        {
+          text: "Problème de connexion",
+          onPress: () => Alert.alert("Merci", "Votre signalement de problème de connexion a été envoyé.")
+        },
+        {
+          text: "Autre",
+          onPress: () => Alert.alert("Contact", "Envoyez-nous un email à : bugs@typevision.app")
+        },
+        {
+          text: "Annuler",
+          style: "cancel"
+        }
+      ]
+    );
+  };
+
+  const rateApp = () => {
+    Alert.alert(
+      "Noter l'application",
+      "Merci de noter TypeVision !",
+      [
+        {
+          text: "⭐⭐⭐⭐⭐ 5 étoiles",
+          onPress: () => Alert.alert("Merci !", "Merci pour votre excellente note !")
+        },
+        {
+          text: "⭐⭐⭐⭐ 4 étoiles",
+          onPress: () => Alert.alert("Merci !", "Merci pour votre note ! Comment pouvons-nous améliorer ?")
+        },
+        {
+          text: "Plus tard",
+          style: "cancel"
         }
       ]
     );
@@ -171,61 +295,6 @@ export default function SettingsScreen({ onBack }) {
               switchValue={settings.notificationsEnabled}
               onToggle={() => toggleSetting('notificationsEnabled')}
             />
-            <SettingItem
-              icon={<MaterialIcons name="tips-and-updates" size={24} color="#333" />}
-              title="Conseils et astuces"
-              subtitle="Afficher des conseils utiles"
-              hasSwitch
-              switchValue={settings.showTipsEnabled}
-              onToggle={() => toggleSetting('showTipsEnabled')}
-            />
-          </View>
-
-          {/* Section Jeu */}
-          <SectionHeader title="Jeu" />
-          <View style={styles.section}>
-            <SettingItem
-              icon={<Ionicons name="save" size={24} color="#333" />}
-              title="Sauvegarde automatique"
-              subtitle="Sauvegarder automatiquement les progrès"
-              hasSwitch
-              switchValue={settings.autoSaveEnabled}
-              onToggle={() => toggleSetting('autoSaveEnabled')}
-            />
-            <SettingItem
-              icon={<MaterialIcons name="trending-up" size={24} color="#333" />}
-              title="Statistiques de difficulté"
-              subtitle="Ajuster automatiquement la difficulté"
-              onPress={() => Alert.alert('Fonctionnalité', 'Bientôt disponible')}
-              showArrow
-            />
-          </View>
-
-          {/* Section Confidentialité */}
-          <SectionHeader title="Confidentialité & Données" />
-          <View style={styles.section}>
-            <SettingItem
-              icon={<MaterialIcons name="analytics" size={24} color="#333" />}
-              title="Données d'usage"
-              subtitle="Partager les statistiques anonymes"
-              hasSwitch
-              switchValue={settings.analyticsEnabled}
-              onToggle={() => toggleSetting('analyticsEnabled')}
-            />
-            <SettingItem
-              icon={<MaterialIcons name="privacy-tip" size={24} color="#333" />}
-              title="Politique de confidentialité"
-              subtitle="Consulter notre politique"
-              onPress={() => Alert.alert('Politique', 'Ouverture de la politique de confidentialité')}
-              showArrow
-            />
-            <SettingItem
-              icon={<MaterialIcons name="description" size={24} color="#333" />}
-              title="Conditions d'utilisation"
-              subtitle="Consulter les conditions"
-              onPress={() => Alert.alert('Conditions', 'Ouverture des conditions d\'utilisation')}
-              showArrow
-            />
           </View>
 
           {/* Section Support */}
@@ -235,45 +304,26 @@ export default function SettingsScreen({ onBack }) {
               icon={<MaterialIcons name="help" size={24} color="#333" />}
               title="Centre d'aide"
               subtitle="FAQ et guide d'utilisation"
-              onPress={() => Alert.alert('Aide', 'Ouverture du centre d\'aide')}
+              onPress={openHelp}
               showArrow
             />
             <SettingItem
               icon={<MaterialIcons name="feedback" size={24} color="#333" />}
               title="Signaler un problème"
               subtitle="Nous faire part d'un bug"
-              onPress={() => Alert.alert('Feedback', 'Ouverture du formulaire de signalement')}
+              onPress={reportProblem}
               showArrow
             />
             <SettingItem
               icon={<MaterialIcons name="star-rate" size={24} color="#333" />}
               title="Noter l'application"
-              subtitle="Donnez votre avis sur l'App Store"
-              onPress={() => Alert.alert('Note', 'Redirection vers l\'App Store')}
+              subtitle="Donnez votre avis"
+              onPress={rateApp}
               showArrow
             />
           </View>
 
-          {/* Section Compte */}
-          <SectionHeader title="Compte" />
-          <View style={styles.section}>
-            <SettingItem
-              icon={<MaterialIcons name="backup" size={24} color="#333" />}
-              title="Sauvegarder les données"
-              subtitle="Exporter vos progrès"
-              onPress={() => Alert.alert('Sauvegarde', 'Sauvegarde des données en cours...')}
-              showArrow
-            />
-            <SettingItem
-              icon={<MaterialIcons name="restore" size={24} color="#333" />}
-              title="Restaurer les données"
-              subtitle="Importer une sauvegarde"
-              onPress={() => Alert.alert('Restauration', 'Sélectionner un fichier de sauvegarde')}
-              showArrow
-            />
-          </View>
-
-          {/* Section Actions dangereuses */}
+          {/* Section Actions */}
           <SectionHeader title="Actions" />
           <View style={styles.section}>
             <SettingItem
@@ -297,7 +347,7 @@ export default function SettingsScreen({ onBack }) {
           {/* Informations sur l'application */}
           <View style={styles.appInfo}>
             <Text style={styles.appInfoText}>TypeVision v1.0.0</Text>
-            <Text style={styles.appInfoSubtext}>Développé avec ❤️ par Matthieu</Text>
+            <Text style={styles.appInfoSubtext}>Développé avec ❤️</Text>
           </View>
 
           <View style={styles.bottomSpacer} />

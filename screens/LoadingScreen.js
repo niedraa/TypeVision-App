@@ -192,7 +192,7 @@ const LoadingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A', // Bleu foncé moderne
+    backgroundColor: '#F5F5F5', // Même fond que le menu principal
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
@@ -213,37 +213,37 @@ const styles = StyleSheet.create({
   logoLine1: {
     width: 60,
     height: 12,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2C3E50', // Même couleur que le menu
     borderRadius: 6,
     marginBottom: 6,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: '#2C3E50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoLine2: {
     width: 45,
     height: 12,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2C3E50',
     borderRadius: 6,
     marginBottom: 6,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: '#2C3E50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoLine3: {
     width: 30,
     height: 12,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2C3E50',
     borderRadius: 6,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowColor: '#2C3E50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoTextContainer: {
     alignItems: 'center',
@@ -251,13 +251,13 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#2C3E50', // Même couleur que le menu
     marginBottom: 8,
     letterSpacing: 2,
   },
   logoSubtext: {
     fontSize: 16,
-    color: '#94A3B8',
+    color: '#7F8C8D', // Gris cohérent avec le menu
     fontWeight: '300',
     letterSpacing: 1,
   },
@@ -274,12 +274,12 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#95A5A6', // Gris pour les points de chargement
     marginHorizontal: 4,
   },
   loadingText: {
     fontSize: 16,
-    color: '#94A3B8',
+    color: '#7F8C8D', // Gris cohérent
     fontWeight: '300',
   },
 });
