@@ -10,12 +10,25 @@ import LoadingScreen from './screens/LoadingScreen';
 import LoginScreen from './screens/LoginScreen';
 import { FadeTransition, ScaleTransition } from './components/Transitions';
 import { AnimatedButton } from './components/AnimatedButton';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
+  const { theme } = useTheme();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
 
   useEffect(() => {
     // Simuler un temps de chargement initial
@@ -171,10 +184,10 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     minHeight: '100vh', // Safari fix
   },
   header: {
@@ -197,7 +210,7 @@ const styles = StyleSheet.create({
   logoLine1: {
     width: 40,
     height: 8,
-    backgroundColor: '#2C3E50',
+    backgroundColor: theme.colors.text,
     borderRadius: 4,
     marginBottom: 4,
     WebkitBorderRadius: 4, // Safari fix
@@ -205,7 +218,7 @@ const styles = StyleSheet.create({
   logoLine2: {
     width: 30,
     height: 8,
-    backgroundColor: '#2C3E50',
+    backgroundColor: theme.colors.text,
     borderRadius: 4,
     marginBottom: 4,
     WebkitBorderRadius: 4, // Safari fix
@@ -213,20 +226,20 @@ const styles = StyleSheet.create({
   logoLine3: {
     width: 20,
     height: 8,
-    backgroundColor: '#2C3E50',
+    backgroundColor: theme.colors.text,
     borderRadius: 4,
     WebkitBorderRadius: 4, // Safari fix
   },
   title: {
     fontSize: 36,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: theme.colors.text,
     letterSpacing: -1,
     textAlign: 'center',
   },
   welcomeText: {
     fontSize: 16,
-    color: '#7F8C8D',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: 10,
     fontWeight: '500',
@@ -239,7 +252,7 @@ const styles = StyleSheet.create({
     WebkitBoxPack: 'center', // Safari fix
   },
   menuButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     paddingVertical: 20,
     paddingHorizontal: 30,
     marginVertical: 12,
@@ -248,11 +261,16 @@ const styles = StyleSheet.create({
     WebkitBorderRadius: 25, // Safari fix
     WebkitBoxAlign: 'center', // Safari fix
     // Simplified shadow for Safari
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-    WebkitBoxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    boxShadow: `0 2px 8px ${theme.colors.shadow}`,
+    WebkitBoxShadow: `0 2px 8px ${theme.colors.shadow}`,
     border: 'none',
     outline: 'none',
     cursor: 'pointer',
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   profileButton: {
     marginTop: 30,
@@ -260,7 +278,7 @@ const styles = StyleSheet.create({
   menuButtonText: {
     fontSize: 20,
     fontWeight: '500',
-    color: '#2C3E50',
+    color: theme.colors.text,
     textAlign: 'center',
   },
 });

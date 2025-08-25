@@ -17,20 +17,33 @@ import { SlideTransition } from '../components/Transitions';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function SettingsScreen({ onBack }) {
+  const { theme, isDark, toggleTheme } = useTheme();
   const [settings, setSettings] = useState({
     soundEnabled: true,
     vibrationEnabled: true,
-    darkModeEnabled: false,
+    darkModeEnabled: isDark,
     highContrastEnabled: false,
     notificationsEnabled: true,
   });
+
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
 
   // Charger les paramètres au démarrage
   useEffect(() => {
     loadSettings();
   }, []);
+
+  // Synchroniser avec le contexte de thème
+  useEffect(() => {
+    setSettings(prev => ({
+      ...prev,
+      darkModeEnabled: isDark
+    }));
+  }, [isDark]);
 
   const loadSettings = async () => {
     try {
@@ -72,7 +85,9 @@ export default function SettingsScreen({ onBack }) {
     }
 
     if (settingKey === 'darkModeEnabled') {
-      Alert.alert('Mode sombre', 'Cette fonctionnalité sera appliquée au prochain redémarrage de l\'application');
+      // Basculer le thème immédiatement
+      toggleTheme();
+      Alert.alert('Mode sombre', newSettings.darkModeEnabled ? 'Mode sombre activé' : 'Mode clair activé');
     }
 
     if (settingKey === 'notificationsEnabled') {
@@ -222,7 +237,7 @@ export default function SettingsScreen({ onBack }) {
             thumbColor={switchValue ? '#ffffff' : '#ffffff'}
           />
         ) : showArrow ? (
-          <Ionicons name="chevron-forward" size={20} color="#999" />
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textTertiary} />
         ) : null}
       </View>
     </TouchableOpacity>
@@ -235,12 +250,12 @@ export default function SettingsScreen({ onBack }) {
   return (
     <SlideTransition>
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <StatusBar barStyle={theme.statusBar} backgroundColor={theme.colors.background} />
         
         {/* Header avec bouton retour */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Paramètres</Text>
         </View>
@@ -251,7 +266,7 @@ export default function SettingsScreen({ onBack }) {
           <SectionHeader title="Audio & Visuel" />
           <View style={styles.section}>
             <SettingItem
-              icon={<Ionicons name="volume-high" size={24} color="#333" />}
+              icon={<Ionicons name="volume-high" size={24} color={theme.colors.text} />}
               title="Sons"
               subtitle="Activer les effets sonores"
               hasSwitch
@@ -259,7 +274,7 @@ export default function SettingsScreen({ onBack }) {
               onToggle={() => toggleSetting('soundEnabled')}
             />
             <SettingItem
-              icon={<MaterialIcons name="vibration" size={24} color="#333" />}
+              icon={<MaterialIcons name="vibration" size={24} color={theme.colors.text} />}
               title="Vibrations"
               subtitle="Retour haptique"
               hasSwitch
@@ -267,7 +282,7 @@ export default function SettingsScreen({ onBack }) {
               onToggle={() => toggleSetting('vibrationEnabled')}
             />
             <SettingItem
-              icon={<Ionicons name="moon" size={24} color="#333" />}
+              icon={<Ionicons name="moon" size={24} color={theme.colors.text} />}
               title="Mode sombre"
               subtitle="Interface en mode sombre"
               hasSwitch
@@ -275,7 +290,7 @@ export default function SettingsScreen({ onBack }) {
               onToggle={() => toggleSetting('darkModeEnabled')}
             />
             <SettingItem
-              icon={<MaterialIcons name="contrast" size={24} color="#333" />}
+              icon={<MaterialIcons name="contrast" size={24} color={theme.colors.text} />}
               title="Contraste élevé"
               subtitle="Améliore la lisibilité"
               hasSwitch
@@ -288,7 +303,7 @@ export default function SettingsScreen({ onBack }) {
           <SectionHeader title="Notifications" />
           <View style={styles.section}>
             <SettingItem
-              icon={<Ionicons name="notifications" size={24} color="#333" />}
+              icon={<Ionicons name="notifications" size={24} color={theme.colors.text} />}
               title="Notifications push"
               subtitle="Recevoir des notifications"
               hasSwitch
@@ -301,21 +316,21 @@ export default function SettingsScreen({ onBack }) {
           <SectionHeader title="Support" />
           <View style={styles.section}>
             <SettingItem
-              icon={<MaterialIcons name="help" size={24} color="#333" />}
+              icon={<MaterialIcons name="help" size={24} color={theme.colors.text} />}
               title="Centre d'aide"
               subtitle="FAQ et guide d'utilisation"
               onPress={openHelp}
               showArrow
             />
             <SettingItem
-              icon={<MaterialIcons name="feedback" size={24} color="#333" />}
+              icon={<MaterialIcons name="feedback" size={24} color={theme.colors.text} />}
               title="Signaler un problème"
               subtitle="Nous faire part d'un bug"
               onPress={reportProblem}
               showArrow
             />
             <SettingItem
-              icon={<MaterialIcons name="star-rate" size={24} color="#333" />}
+              icon={<MaterialIcons name="star-rate" size={24} color={theme.colors.text} />}
               title="Noter l'application"
               subtitle="Donnez votre avis"
               onPress={rateApp}
@@ -327,10 +342,10 @@ export default function SettingsScreen({ onBack }) {
           <SectionHeader title="Actions" />
           <View style={styles.section}>
             <SettingItem
-              icon={<MaterialIcons name="refresh" size={24} color="#FF9800" />}
+              icon={<MaterialIcons name="refresh" size={24} color={theme.colors.warning} />}
               title="Réinitialiser les progrès"
               subtitle="Supprimer tous les progrès"
-              textColor="#FF9800"
+              textColor={theme.colors.warning}
               onPress={handleResetProgress}
               showArrow
             />
@@ -357,10 +372,10 @@ export default function SettingsScreen({ onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -369,7 +384,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   backButton: {
     width: 40,
@@ -380,7 +395,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginLeft: 10,
   },
   scrollContainer: {
@@ -389,7 +404,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 30,
     marginBottom: 15,
     marginHorizontal: 20,
@@ -397,10 +412,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   section: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.surface,
     marginHorizontal: 20,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: {
       width: 0,
       height: 1,
@@ -416,7 +431,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: theme.colors.border,
   },
   settingLeft: {
     flexDirection: 'row',
@@ -436,12 +451,12 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 2,
   },
   settingSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   settingRight: {
     justifyContent: 'center',
@@ -455,12 +470,12 @@ const styles = StyleSheet.create({
   appInfoText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 5,
   },
   appInfoSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   bottomSpacer: {
     height: 40,

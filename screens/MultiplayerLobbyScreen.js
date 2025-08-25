@@ -80,32 +80,32 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
     if (!isHost) return;
     
     const playersList = Object.values(players);
-    const allReady = playersList.every(player => player.ready || player.isHost);
     
     if (playersList.length < 2) {
       Alert.alert('Erreur', 'Il faut au moins 2 joueurs pour commencer');
       return;
     }
     
-    if (!allReady) {
-      Alert.alert('Erreur', 'Tous les joueurs doivent être prêts');
-      return;
+    // Pour les parties rapides (publiques), pas besoin que tous soient prêts
+    if (!room.settings?.isPublic) {
+      const allReady = playersList.every(player => player.isReady || player.isHost);
+      if (!allReady) {
+        Alert.alert('Erreur', 'Tous les joueurs doivent être prêts');
+        return;
+      }
     }
 
-    // Choisir un texte aléatoire
-    const randomWorld = Object.values(gameData.worlds)[0];
-    const randomLevel = randomWorld.levels[Math.floor(Math.random() * randomWorld.levels.length)];
+    // Générer un texte de jeu
+    const gameText = globalMultiplayerService.generateGameText(
+      room.settings?.difficulty || 'medium',
+      room.settings?.textLength || 'medium'
+    );
     
-    const textData = {
-      id: randomLevel.id,
-      text: randomLevel.text,
-      title: randomLevel.name,
-      difficulty: room.settings.difficulty
-    };
-
-    const success = await globalMultiplayerService.startGame(room.id, textData);
-    if (!success) {
-      Alert.alert('Erreur', 'Impossible de démarrer la partie');
+    console.log('🎮 Démarrage de la partie avec le texte:', gameText.substring(0, 50) + '...');
+    
+    const result = await globalMultiplayerService.startGame(room.id, gameText);
+    if (!result.success) {
+      Alert.alert('Erreur', result.error || 'Impossible de démarrer la partie');
     }
   };
 
@@ -143,7 +143,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
     );
   };
 
-  const renderPlayer = ({ item }) => {
+    const renderPlayer = ({ item }) => {
     const player = item;
     const isCurrentPlayer = player.id === globalMultiplayerService.currentPlayerId;
     
@@ -162,7 +162,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
               {isCurrentPlayer && ' (Vous)'}
             </Text>
             <Text style={styles.playerStatus}>
-              {player.ready ? '✅ Prêt' : '⏳ En attente'}
+              {player.isReady ? '✅ Prêt' : '⏳ En attente'}
             </Text>
           </View>
         </View>
@@ -171,7 +171,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
   };
 
   const playersArray = Object.values(players);
-  const readyCount = playersArray.filter(p => p.ready || p.isHost).length;
+  const readyCount = playersArray.filter(p => p.isReady || p.isHost).length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -236,30 +236,42 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
         </View>
       </View>
 
-      {/* Actions */}
-      <View style={styles.actionsSection}>
-        {isHost ? (
-          <TouchableOpacity 
-            style={[
-              styles.startButton, 
-              (playersArray.length < 2 || readyCount < playersArray.length) && styles.disabledButton
-            ]}
-            onPress={startGame}
-            disabled={playersArray.length < 2 || readyCount < playersArray.length}
-          >
-            <Text style={styles.startButtonText}>Commencer la partie</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity 
-            style={[styles.readyButton, isReady && styles.readyButtonActive]}
-            onPress={toggleReady}
-          >
-            <Text style={[styles.readyButtonText, isReady && styles.readyButtonTextActive]}>
-              {isReady ? '✅ Prêt' : 'Je suis prêt'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Actions - Cachées pour les parties rapides */}
+      {!room.settings?.isPublic && (
+        <View style={styles.actionsSection}>
+          {isHost ? (
+            <TouchableOpacity 
+              style={[
+                styles.startButton, 
+                (playersArray.length < 2 || (!room.settings?.isPublic && readyCount < playersArray.length)) && styles.disabledButton
+              ]}
+              onPress={startGame}
+              disabled={playersArray.length < 2 || (!room.settings?.isPublic && readyCount < playersArray.length)}
+            >
+              <Text style={styles.startButtonText}>Commencer la partie</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.readyButton, isReady && styles.readyButtonActive]}
+              onPress={toggleReady}
+            >
+              <Text style={[styles.readyButtonText, isReady && styles.readyButtonTextActive]}>
+                {isReady ? '✅ Prêt' : 'Je suis prêt'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      
+      {/* Affichage spécial pour les parties rapides */}
+      {room.settings?.isPublic && (
+        <View style={styles.quickMatchSection}>
+          <Text style={styles.quickMatchTitle}>🚀 Partie Rapide</Text>
+          <Text style={styles.quickMatchText}>
+            La partie commencera automatiquement quand suffisamment de joueurs seront connectés
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -437,6 +449,32 @@ const styles = StyleSheet.create({
   },
   readyButtonTextActive: {
     color: 'white',
+  },
+  quickMatchSection: {
+    backgroundColor: '#10B981',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  quickMatchTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  quickMatchText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

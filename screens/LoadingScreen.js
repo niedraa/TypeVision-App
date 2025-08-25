@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
 const LoadingScreen = () => {
+  const { theme } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const logoTextAnim = useRef(new Animated.Value(0)).current;
@@ -11,6 +13,9 @@ const LoadingScreen = () => {
   const dot1Anim = useRef(new Animated.Value(0)).current;
   const dot2Anim = useRef(new Animated.Value(0)).current;
   const dot3Anim = useRef(new Animated.Value(0)).current;
+
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
 
   useEffect(() => {
     // Animation du logo principal
@@ -189,10 +194,10 @@ const LoadingScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5', // Même fond que le menu principal
+    backgroundColor: theme.colors.background, // Même fond que le menu principal
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
@@ -213,10 +218,10 @@ const styles = StyleSheet.create({
   logoLine1: {
     width: 60,
     height: 12,
-    backgroundColor: '#2C3E50', // Même couleur que le menu
+    backgroundColor: theme.colors.text, // Même couleur que le menu
     borderRadius: 6,
     marginBottom: 6,
-    shadowColor: '#2C3E50',
+    shadowColor: theme.colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -225,10 +230,10 @@ const styles = StyleSheet.create({
   logoLine2: {
     width: 45,
     height: 12,
-    backgroundColor: '#2C3E50',
+    backgroundColor: theme.colors.text,
     borderRadius: 6,
     marginBottom: 6,
-    shadowColor: '#2C3E50',
+    shadowColor: theme.colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -237,9 +242,9 @@ const styles = StyleSheet.create({
   logoLine3: {
     width: 30,
     height: 12,
-    backgroundColor: '#2C3E50',
+    backgroundColor: theme.colors.text,
     borderRadius: 6,
-    shadowColor: '#2C3E50',
+    shadowColor: theme.colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -251,13 +256,13 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#2C3E50', // Même couleur que le menu
+    color: theme.colors.text, // Même couleur que le menu
     marginBottom: 8,
     letterSpacing: 2,
   },
   logoSubtext: {
     fontSize: 16,
-    color: '#7F8C8D', // Gris cohérent avec le menu
+    color: theme.colors.textSecondary, // Gris cohérent avec le menu
     fontWeight: '300',
     letterSpacing: 1,
   },
@@ -274,12 +279,12 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#95A5A6', // Gris pour les points de chargement
+    backgroundColor: theme.colors.textTertiary, // Gris pour les points de chargement
     marginHorizontal: 4,
   },
   loadingText: {
     fontSize: 16,
-    color: '#7F8C8D', // Gris cohérent
+    color: theme.colors.textSecondary, // Gris cohérent
     fontWeight: '300',
   },
 });

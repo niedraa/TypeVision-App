@@ -1764,6 +1764,361 @@ export class GlobalMultiplayerService {
       console.error('❌ Erreur nettoyage fantômes:', error);
     }
   }
+
+  // ========== LOGIQUE DE JEU MULTIJOUEUR ==========
+
+  // Mettre à jour le progrès du joueur en temps réel
+  async updatePlayerProgress(roomId, progress, stats) {
+    try {
+      if (!database || !this.currentPlayerId || !roomId) return;
+
+      const updates = {};
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/progress`] = progress;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/wpm`] = stats.wpm;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/accuracy`] = stats.accuracy;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/lastUpdate`] = Date.now();
+      
+      // Mettre à jour la position actuelle dans le texte
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/currentPosition`] = stats.currentPosition || 0;
+      
+      await update(ref(database), updates);
+      
+    } catch (error) {
+      console.error('❌ Erreur mise à jour progrès:', error);
+    }
+  }
+
+  // Mettre à jour la frappe en temps réel (pour voir les adversaires taper)
+  async updatePlayerTyping(roomId, currentText, position, errors) {
+    try {
+      if (!database || !this.currentPlayerId || !roomId) return;
+
+      const updates = {};
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/typingState`] = {
+        currentText: currentText,
+        position: position,
+        errors: errors,
+        timestamp: Date.now()
+      };
+      
+      await update(ref(database), updates);
+      
+    } catch (error) {
+      console.error('❌ Erreur mise à jour frappe:', error);
+    }
+  }
+
+  // Terminer le jeu pour un joueur
+  async finishPlayerGame(roomId, finalStats) {
+    try {
+      if (!database || !this.currentPlayerId || !roomId) return;
+
+      const finishTime = Date.now();
+      const updates = {};
+      
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/finished`] = true;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/finishTime`] = finishTime;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/finalWpm`] = finalStats.wpm;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/finalAccuracy`] = finalStats.accuracy;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/completionTime`] = finalStats.completionTime;
+      updates[`globalRooms/${roomId}/players/${this.currentPlayerId}/progress`] = 100;
+      
+      await update(ref(database), updates);
+      
+      // Vérifier si c'est le premier joueur à terminer
+      const roomRef = ref(database, `globalRooms/${roomId}`);
+      const roomSnapshot = await get(roomRef);
+      
+      if (roomSnapshot.exists()) {
+        const room = roomSnapshot.val();
+        const players = room.players || {};
+        const finishedPlayers = Object.values(players).filter(p => p.finished);
+        
+        // Si c'est le premier à terminer, démarrer le timer de fin
+        if (finishedPlayers.length === 1 && !room.finishTimer) {
+          console.log('🏁 Premier joueur terminé ! Démarrage du timer de 20 secondes...');
+          
+          const timerUpdates = {};
+          timerUpdates[`globalRooms/${roomId}/finishTimer`] = {
+            startTime: Date.now(),
+            duration: 20000, // 20 secondes
+            triggered: true
+          };
+          timerUpdates[`globalRooms/${roomId}/status`] = 'finishing';
+          
+          await update(ref(database), timerUpdates);
+          
+          // Programmer la fin automatique dans 20 secondes
+          setTimeout(async () => {
+            try {
+              const currentRoomSnapshot = await get(roomRef);
+              if (currentRoomSnapshot.exists()) {
+                const currentRoom = currentRoomSnapshot.val();
+                
+                // Vérifier que le timer n'a pas été annulé et que tous ne sont pas déjà finis
+                if (currentRoom.finishTimer && currentRoom.finishTimer.triggered) {
+                  console.log('⏰ Timer de fin écoulé ! Fin forcée de la partie.');
+                  
+                  await update(ref(database, `globalRooms/${roomId}`), {
+                    gameCompleted: true,
+                    gameEndTime: Date.now(),
+                    status: 'finished',
+                    finishedByTimer: true
+                  });
+                }
+              }
+            } catch (error) {
+              console.error('❌ Erreur fin automatique:', error);
+            }
+          }, 20000);
+        }
+      }
+      
+      console.log('🏁 Jeu terminé pour le joueur:', this.currentPlayerId);
+      
+      return { success: true };
+      
+    } catch (error) {
+      console.error('❌ Erreur fin de jeu:', error);
+      return { success: false };
+    }
+  }
+
+  // Obtenir les couleurs des joueurs
+  getPlayerColors() {
+    return [
+      '#3B82F6', // Bleu
+      '#EF4444', // Rouge
+      '#10B981', // Vert
+      '#F59E0B', // Orange
+      '#8B5CF6', // Violet
+      '#06B6D4', // Cyan
+      '#EC4899', // Rose
+      '#84CC16', // Lime
+      '#F97316', // Orange foncé
+      '#6366F1'  // Indigo
+    ];
+  }
+
+  // Assigner une couleur à chaque joueur dans la salle
+  assignPlayerColors(players) {
+    const colors = this.getPlayerColors();
+    const playersArray = Object.entries(players);
+    const coloredPlayers = {};
+    
+    playersArray.forEach(([playerId, playerData], index) => {
+      coloredPlayers[playerId] = {
+        ...playerData,
+        color: colors[index % colors.length]
+      };
+    });
+    
+    return coloredPlayers;
+  }
+
+  // Écouter les mises à jour de frappe en temps réel
+  addTypingListener(roomId, callback) {
+    if (!database || !roomId) return null;
+
+    const roomRef = ref(database, `globalRooms/${roomId}/players`);
+    const unsubscribe = onValue(roomRef, (snapshot) => {
+      const playersData = snapshot.val();
+      if (playersData) {
+        // Assigner des couleurs aux joueurs
+        const coloredPlayers = this.assignPlayerColors(playersData);
+        callback(coloredPlayers);
+      }
+    });
+
+    console.log('👂 Listener frappe ajouté pour la salle:', roomId);
+    return unsubscribe;
+  }
+
+  // Vérifier si tous les joueurs ont terminé
+  async checkAllPlayersFinished(roomId) {
+    try {
+      if (!database || !roomId) return false;
+
+      const roomRef = ref(database, `globalRooms/${roomId}`);
+      const snapshot = await get(roomRef);
+      
+      if (!snapshot.exists()) return false;
+      
+      const room = snapshot.val();
+      const players = room.players || {};
+      const playersList = Object.values(players);
+      
+      if (playersList.length === 0) return false;
+      
+      const finishedPlayers = playersList.filter(p => p.finished);
+      const allFinished = finishedPlayers.length === playersList.length;
+      
+      if (allFinished && !room.gameCompleted) {
+        // Marquer le jeu comme terminé
+        await update(ref(database, `globalRooms/${roomId}`), {
+          gameCompleted: true,
+          gameEndTime: Date.now(),
+          status: 'finished'
+        });
+      }
+      
+      return allFinished;
+      
+    } catch (error) {
+      console.error('❌ Erreur vérification fin de jeu:', error);
+      return false;
+    }
+  }
+
+  // Obtenir le classement final
+  async getFinalRanking(roomId) {
+    try {
+      if (!database || !roomId) return [];
+
+      const roomRef = ref(database, `globalRooms/${roomId}`);
+      const snapshot = await get(roomRef);
+      
+      if (!snapshot.exists()) return [];
+      
+      const room = snapshot.val();
+      const players = room.players || {};
+      
+      // Trier les joueurs par temps de fin
+      const ranking = Object.values(players)
+        .filter(p => p.finished)
+        .sort((a, b) => {
+          // D'abord par temps de fin, puis par WPM si même temps
+          if (a.finishTime !== b.finishTime) {
+            return a.finishTime - b.finishTime;
+          }
+          return b.finalWpm - a.finalWpm;
+        })
+        .map((player, index) => ({
+          ...player,
+          rank: index + 1
+        }));
+      
+      return ranking;
+      
+    } catch (error) {
+      console.error('❌ Erreur classement final:', error);
+      return [];
+    }
+  }
+
+  // Redémarrer une partie (pour les parties privées)
+  async restartGame(roomId) {
+    try {
+      if (!database || !roomId) return { success: false };
+
+      const roomRef = ref(database, `globalRooms/${roomId}`);
+      const snapshot = await get(roomRef);
+      
+      if (!snapshot.exists()) {
+        return { success: false, error: 'Salle introuvable' };
+      }
+      
+      const room = snapshot.val();
+      
+      // Vérifier que l'utilisateur est l'hôte
+      if (room.host !== this.currentPlayerId) {
+        return { success: false, error: 'Seul l\'hôte peut redémarrer la partie' };
+      }
+      
+      // Réinitialiser l'état de tous les joueurs
+      const updates = {};
+      const players = room.players || {};
+      
+      Object.keys(players).forEach(playerId => {
+        updates[`globalRooms/${roomId}/players/${playerId}/progress`] = 0;
+        updates[`globalRooms/${roomId}/players/${playerId}/wpm`] = 0;
+        updates[`globalRooms/${roomId}/players/${playerId}/accuracy`] = 100;
+        updates[`globalRooms/${roomId}/players/${playerId}/finished`] = false;
+        updates[`globalRooms/${roomId}/players/${playerId}/finishTime`] = null;
+        updates[`globalRooms/${roomId}/players/${playerId}/finalWpm`] = null;
+        updates[`globalRooms/${roomId}/players/${playerId}/finalAccuracy`] = null;
+        updates[`globalRooms/${roomId}/players/${playerId}/completionTime`] = null;
+        updates[`globalRooms/${roomId}/players/${playerId}/currentPosition`] = 0;
+        updates[`globalRooms/${roomId}/players/${playerId}/typingState`] = null;
+        updates[`globalRooms/${roomId}/players/${playerId}/isReady`] = false;
+      });
+      
+      // Réinitialiser l'état de la salle
+      updates[`globalRooms/${roomId}/status`] = 'waiting';
+      updates[`globalRooms/${roomId}/gameState`] = null;
+      updates[`globalRooms/${roomId}/gameCompleted`] = false;
+      updates[`globalRooms/${roomId}/gameEndTime`] = null;
+      updates[`globalRooms/${roomId}/lastActivity`] = Date.now();
+      
+      await update(ref(database), updates);
+      
+      console.log('🔄 Partie redémarrée:', roomId);
+      return { success: true };
+      
+    } catch (error) {
+      console.error('❌ Erreur redémarrage partie:', error);
+      return { success: false, error: 'Erreur lors du redémarrage' };
+    }
+  }
+
+  // Ajouter un listener pour le timer de fin
+  addFinishTimerListener(roomId, callback) {
+    if (!database || !roomId) return;
+
+    const timerRef = ref(database, `globalRooms/${roomId}/finishTimer`);
+    const unsubscribe = onValue(timerRef, (snapshot) => {
+      const timer = snapshot.val();
+      if (timer && timer.triggered) {
+        const elapsed = Date.now() - timer.startTime;
+        const remaining = Math.max(0, timer.duration - elapsed);
+        
+        callback({
+          active: true,
+          remaining: remaining,
+          elapsed: elapsed,
+          isFinished: remaining === 0,
+          startTime: timer.startTime,
+          duration: timer.duration
+        });
+      } else {
+        callback({
+          active: false,
+          remaining: 0,
+          elapsed: 0,
+          isFinished: false,
+          startTime: null,
+          duration: null
+        });
+      }
+    });
+
+    return unsubscribe;
+  }
+
+  // Ajouter un listener pour l'état du jeu
+  addGameStatusListener(roomId, callback) {
+    if (!database || !roomId) return;
+
+    const statusRef = ref(database, `globalRooms/${roomId}/status`);
+    const gameCompletedRef = ref(database, `globalRooms/${roomId}/gameCompleted`);
+    
+    const statusUnsubscribe = onValue(statusRef, (snapshot) => {
+      const status = snapshot.val();
+      callback({ type: 'status', status });
+    });
+    
+    const gameCompletedUnsubscribe = onValue(gameCompletedRef, (snapshot) => {
+      const gameCompleted = snapshot.val();
+      if (gameCompleted) {
+        callback({ type: 'gameCompleted', gameCompleted });
+      }
+    });
+
+    return () => {
+      statusUnsubscribe();
+      gameCompletedUnsubscribe();
+    };
+  }
 }
 
 // Instance globale du service

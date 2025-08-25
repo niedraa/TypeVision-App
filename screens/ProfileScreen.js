@@ -11,11 +11,16 @@ import {
 } from 'react-native';
 import { SlideTransition } from '../components/Transitions';
 import { AnimatedButton } from '../components/AnimatedButton';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
+  const { theme } = useTheme();
   const [notifications, setNotifications] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
+
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
 
   const handleEditProfile = () => {
     Alert.alert('Profil', 'Fonctionnalité d\'édition bientôt disponible');
@@ -198,10 +203,10 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
   },
   backButton: {
     position: 'absolute',
@@ -210,10 +215,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -222,7 +227,7 @@ const styles = StyleSheet.create({
   },
   backArrow: {
     fontSize: 18,
-    color: '#2C3E50',
+    color: theme.colors.text,
     fontWeight: '600',
   },
   content: {

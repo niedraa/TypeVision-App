@@ -13,14 +13,8 @@ import {
 } from 'react-native';
 // Utiliser le service multijoueur mondial
 import { globalMultiplayerService } from '../services/globalMultiplayerService';
-import { useTheme } from '../contexts/ThemeContext';
 
-export default function MultiplayerGameScreen({ route, navigation, roomData, onGameComplete, onBack }) {
-  // Support pour les deux façons d'appeler le composant
-  const actualRoomData = roomData || route?.params?.roomData;
-  const { theme } = useTheme();
-  const styles = createStyles(theme);
-
+const MultiplayerGameScreen = ({ roomData, onGameComplete, onBack }) => {
   const [gameText, setGameText] = useState('');
   const [userInput, setUserInput] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -32,17 +26,15 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
   const [gameStarted, setGameStarted] = useState(false);
   const [playersTypingState, setPlayersTypingState] = useState({});
   const [finalRanking, setFinalRanking] = useState([]);
-  const [finishTimer, setFinishTimer] = useState(null);
-  const [gameStatus, setGameStatus] = useState('playing');
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
 
   useEffect(() => {
-    console.log('📊 RoomData reçue:', JSON.stringify(actualRoomData, null, 2));
+    console.log('📊 RoomData reçue:', JSON.stringify(roomData, null, 2));
     
-    if (actualRoomData?.gameState?.text) {
-      setGameText(actualRoomData.gameState.text);
+    if (roomData?.gameState?.text) {
+      setGameText(roomData.gameState.text);
       
       console.log('🚀 Démarrage immédiat du jeu');
       
@@ -58,7 +50,7 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     }
 
     // Écouter les changements des joueurs et leur état de frappe
-    const unsubscribeTyping = globalMultiplayerService.addTypingListener(actualRoomData.id, (updatedPlayers) => {
+    const unsubscribeTyping = globalMultiplayerService.addTypingListener(roomData.id, (updatedPlayers) => {
       if (updatedPlayers) {
         setPlayers(updatedPlayers);
         setPlayersTypingState(updatedPlayers);
@@ -69,7 +61,7 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
         
         if (finishedPlayers.length === playersList.length && finishedPlayers.length > 0) {
           setTimeout(async () => {
-            const ranking = await globalMultiplayerService.getFinalRanking(actualRoomData.id);
+            const ranking = await globalMultiplayerService.getFinalRanking(roomData.id);
             setFinalRanking(ranking);
             setShowResults(true);
           }, 2000);
@@ -80,81 +72,7 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     return () => {
       if (unsubscribeTyping) unsubscribeTyping();
     };
-  }, [actualRoomData]);
-
-  // Écouter le timer de fin et le statut du jeu
-  useEffect(() => {
-    if (!roomData?.id) return;
-
-    // Écouter le timer de fin
-    const unsubscribeTimer = globalMultiplayerService.addFinishTimerListener(actualRoomData.id, (timerData) => {
-      setFinishTimer(timerData);
-      
-      if (timerData.isFinished) {
-        // Le timer est écoulé, forcer la fin du jeu
-        console.log('⏰ Timer de fin écoulé !');
-        setGameStatus('finished');
-        setIsFinished(true);
-      }
-    });
-
-    // Écouter le statut du jeu
-    const unsubscribeStatus = globalMultiplayerService.addGameStatusListener(actualRoomData.id, (statusData) => {
-      if (statusData.type === 'status') {
-        setGameStatus(statusData.status);
-        
-        if (statusData.status === 'finishing') {
-          console.log('🏁 Un joueur a terminé ! Timer de 20s lancé...');
-        }
-      }
-      
-      if (statusData.type === 'gameCompleted' && statusData.gameCompleted) {
-        console.log('🎯 Jeu terminé automatiquement');
-        setIsFinished(true);
-        
-        // Afficher les résultats après un délai
-        setTimeout(async () => {
-          const ranking = await globalMultiplayerService.getFinalRanking(actualRoomData.id);
-          setFinalRanking(ranking);
-          setShowResults(true);
-        }, 1000);
-      }
-    });
-
-    return () => {
-      if (unsubscribeTimer) unsubscribeTimer();
-      if (unsubscribeStatus) unsubscribeStatus();
-    };
-  }, [actualRoomData]);
-
-  // Mettre à jour le timer en temps réel
-  useEffect(() => {
-    let interval = null;
-    
-    if (finishTimer && finishTimer.active && finishTimer.remaining > 0) {
-      interval = setInterval(() => {
-        setFinishTimer(prevTimer => {
-          if (!prevTimer || !prevTimer.active || !prevTimer.startTime || !prevTimer.duration) {
-            return prevTimer;
-          }
-          
-          const elapsed = Date.now() - prevTimer.startTime;
-          const remaining = Math.max(0, prevTimer.duration - elapsed);
-          
-          return {
-            ...prevTimer,
-            remaining: remaining,
-            elapsed: elapsed,
-            isFinished: remaining === 0
-          };
-        });
-      }, 100); // Mise à jour toutes les 100ms pour plus de fluidité
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [finishTimer?.active]);
+  }, [roomData]);
 
   const calculateStats = () => {
     if (!startTime || currentIndex === 0) return { wpm: 0, accuracy: 100, currentPosition: 0 };
@@ -173,11 +91,11 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     const stats = calculateStats();
     
     // Mettre à jour le progrès dans Firebase
-    await globalMultiplayerService.updatePlayerProgress(actualRoomData.id, progress, stats);
+    await globalMultiplayerService.updatePlayerProgress(roomData.id, progress, stats);
     
     // Mettre à jour l'état de frappe
     await globalMultiplayerService.updatePlayerTyping(
-      actualRoomData.id, 
+      roomData.id, 
       userInput, 
       currentIndex, 
       errors
@@ -230,13 +148,13 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
       completionTime: Date.now() - startTime
     };
     
-    await globalMultiplayerService.finishPlayerGame(actualRoomData.id, gameResult);
+    await globalMultiplayerService.finishPlayerGame(roomData.id, gameResult);
     
     // Vérifier si tous ont terminé
-    const allFinished = await globalMultiplayerService.checkAllPlayersFinished(actualRoomData.id);
+    const allFinished = await globalMultiplayerService.checkAllPlayersFinished(roomData.id);
     if (allFinished) {
       setTimeout(async () => {
-        const ranking = await globalMultiplayerService.getFinalRanking(actualRoomData.id);
+        const ranking = await globalMultiplayerService.getFinalRanking(roomData.id);
         setFinalRanking(ranking);
         setShowResults(true);
       }, 1000);
@@ -409,31 +327,6 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Timer de fin */}
-      {finishTimer && finishTimer.active && (
-        <View style={styles.finishTimerContainer}>
-          <View style={styles.finishTimerContent}>
-            <Text style={styles.finishTimerTitle}>
-              🏁 Un joueur a terminé !
-            </Text>
-            <Text style={styles.finishTimerText}>
-              Temps restant: {finishTimer.remaining && !isNaN(finishTimer.remaining) ? Math.max(0, Math.ceil(finishTimer.remaining / 1000)) : 0}s
-            </Text>
-            <View style={styles.finishTimerBar}>
-              <View 
-                style={[
-                  styles.finishTimerProgress, 
-                  { 
-                    width: `${finishTimer.remaining && !isNaN(finishTimer.remaining) ? Math.max(0, (finishTimer.remaining / 20000) * 100) : 0}%`,
-                    backgroundColor: (finishTimer.remaining && finishTimer.remaining < 5000) ? '#DC3545' : (finishTimer.remaining && finishTimer.remaining < 10000) ? '#F59E0B' : '#DC3545'
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-        </View>
-      )}
-      
       {/* Players Progress */}
       <ScrollView 
         style={styles.playersProgress}
@@ -470,22 +363,22 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
   );
 };
 
-const createStyles = (theme) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8F9FA',
   },
   playersProgress: {
-    maxHeight: 300,
+    maxHeight: 200,
     paddingHorizontal: 15,
     paddingTop: 10,
   },
   playerProgressCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'white',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
-    shadowColor: theme.colors.shadow,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -493,7 +386,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   currentPlayerProgress: {
     borderWidth: 2,
-    borderColor: theme.colors.primary,
+    borderColor: '#3B82F6',
   },
   playerProgressHeader: {
     flexDirection: 'row',
@@ -514,11 +407,11 @@ const createStyles = (theme) => StyleSheet.create({
   playerProgressName: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: '#333',
   },
   playerProgressStats: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#666',
   },
   playerTypingIndicator: {
     fontSize: 10,
@@ -569,12 +462,11 @@ const createStyles = (theme) => StyleSheet.create({
   },
   opponentCursor: {
     position: 'absolute',
-    top: -2,
+    top: 0,
     left: 0,
     right: 0,
-    height: 3,
-    opacity: 0.9,
-    borderRadius: 1,
+    height: 2,
+    opacity: 0.8,
   },
   inputContainer: {
     margin: 15,
@@ -664,7 +556,7 @@ const createStyles = (theme) => StyleSheet.create({
   },
   resultStats: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: '#666',
   },
   backButton: {
     backgroundColor: '#3B82F6',
@@ -678,48 +570,6 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  finishTimerContainer: {
-    backgroundColor: '#FFF3CD',
-    borderColor: '#FEC107',
-    borderWidth: 1,
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 12,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  finishTimerContent: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  finishTimerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#856404',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  finishTimerText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#856404',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  finishTimerBar: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#F8D7DA',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  finishTimerProgress: {
-    height: '100%',
-    backgroundColor: '#DC3545',
-    borderRadius: 4,
-  },
 });
+
+export default MultiplayerGameScreen;
