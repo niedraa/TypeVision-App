@@ -164,38 +164,46 @@ const TypingGameScreen = ({ level, world, onBack, onComplete }) => {
       startGame();
     }
 
-    // Système de correction obligatoire
+    // Système de correction obligatoire - logique stricte
     let validText = '';
-    let errorCount = errors;
+    let hasError = false;
     
-    // Vérifier chaque caractère
-    for (let i = 0; i < text.length; i++) {
-      if (i < targetText.length) {
-        if (text[i] === targetText[i]) {
-          // Caractère correct
-          validText += text[i];
-        } else {
-          // Erreur détectée - compter l'erreur et arrêter
-          errorCount++;
-          break; // Empêcher de continuer à taper
-        }
+    // Vérifier chaque caractère au fur et à mesure
+    for (let i = 0; i < text.length && i < targetText.length; i++) {
+      if (text[i] === targetText[i]) {
+        validText += text[i];
       } else {
-        // Texte trop long
+        // Dès qu'il y a une erreur, on s'arrête là
+        hasError = true;
         break;
       }
     }
     
-    // Mettre à jour seulement avec le texte valide
+    // Si l'utilisateur essaie de taper plus que ce qui est validé, on bloque
+    if (text.length > validText.length) {
+      // On ne met à jour l'input qu'avec le texte valide
+      setInputText(validText);
+      console.log('❌ Erreur détectée ! Impossible de continuer. Corrigez d\'abord l\'erreur.');
+      return;
+    }
+    
+    // Mettre à jour avec le texte valide uniquement
     setInputText(validText);
     setCurrentIndex(validText.length);
-    setErrors(errorCount);
+    
+    // Compter les erreurs totales (uniquement les erreurs corrigées)
+    let totalErrors = errors;
+    if (hasError) {
+      totalErrors++;
+      setErrors(totalErrors);
+    }
     
     // Calcul WPM en temps réel
     if (timeElapsed > 0) {
       const currentWpm = gameUtils.calculateWPM(validText, timeElapsed);
       setWpm(currentWpm);
       
-      const currentAccuracy = gameUtils.calculateAccuracy(validText.length, errorCount);
+      const currentAccuracy = gameUtils.calculateAccuracy(validText.length, totalErrors);
       setAccuracy(currentAccuracy);
     }
   };

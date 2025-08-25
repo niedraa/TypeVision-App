@@ -17,11 +17,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createGuestUser, createRegisteredUser } from '../utils/userUtils';
+import AuthService from '../services/AuthService';
 
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [authMode, setAuthMode] = useState('guest'); // 'guest', 'email'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false); // true pour créer un compte, false pour se connecter
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -59,6 +64,39 @@ const LoginScreen = ({ onLogin }) => {
       setIsLoading(false);
       onLogin(guestUser);
     }, 1500);
+  };
+
+  const handleEmailAuth = async () => {
+    if (!email || !password) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      let emailUser;
+      if (isSignUp) {
+        // Créer un nouveau compte
+        emailUser = await AuthService.createEmailAccount(email, password);
+        console.log('✅ Compte créé avec succès:', emailUser);
+        Alert.alert('Compte créé', 'Votre compte a été créé avec succès !');
+      } else {
+        // Se connecter avec un compte existant
+        emailUser = await AuthService.signInWithEmail(email, password);
+        console.log('✅ Connexion réussie:', emailUser);
+      }
+      onLogin(emailUser);
+    } catch (error) {
+      console.log('❌ Erreur authentification email:', error);
+      Alert.alert('Erreur', error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -110,33 +148,121 @@ const LoginScreen = ({ onLogin }) => {
               </Text>
             </View>
 
-            {/* Bouton principal pour jouer en tant qu'invité */}
-            <View style={styles.buttonContainer}>
+            {/* Mode Invité */}
+            {authMode === 'guest' && (
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity 
+                  style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+                  onPress={handleGuestLogin}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <Animated.View style={styles.loadingSpinner} />
+                      <Text style={styles.buttonText}>Connexion...</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.buttonContent}>
+                      <Ionicons name="play-circle-outline" size={24} color="#FFFFFF" />
+                      <Text style={styles.buttonText}>Jouer maintenant</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Mode Email */}
+            {authMode === 'email' && (
+              <View style={styles.formContainer}>
+                <View style={styles.authToggle}>
+                  <TouchableOpacity 
+                    style={[styles.toggleButton, !isSignUp && styles.toggleButtonActive]}
+                    onPress={() => setIsSignUp(false)}
+                  >
+                    <Text style={[styles.toggleButtonText, !isSignUp && styles.toggleButtonTextActive]}>
+                      Se connecter
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.toggleButton, isSignUp && styles.toggleButtonActive]}
+                    onPress={() => setIsSignUp(true)}
+                  >
+                    <Text style={[styles.toggleButtonText, isSignUp && styles.toggleButtonTextActive]}>
+                      Créer un compte
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <TextInput
+                  style={styles.input}
+                  placeholder="Adresse email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder={isSignUp ? "Mot de passe (min. 6 caractères)" : "Mot de passe"}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity 
+                  style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+                  onPress={handleEmailAuth}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <Animated.View style={styles.loadingSpinner} />
+                      <Text style={styles.buttonText}>
+                        {isSignUp ? 'Création...' : 'Connexion...'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.buttonContent}>
+                      <Ionicons 
+                        name={isSignUp ? "person-add-outline" : "mail-outline"} 
+                        size={24} 
+                        color="#FFFFFF" 
+                      />
+                      <Text style={styles.buttonText}>
+                        {isSignUp ? 'Créer le compte' : 'Se connecter'}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Sélecteur de mode d'authentification */}
+            <View style={styles.authModeSelector}>
               <TouchableOpacity 
-                style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-                onPress={handleGuestLogin}
-                disabled={isLoading}
+                style={[styles.modeButton, authMode === 'guest' && styles.modeButtonActive]}
+                onPress={() => setAuthMode('guest')}
               >
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <Animated.View style={styles.loadingSpinner} />
-                    <Text style={styles.buttonText}>Connexion...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="play-circle-outline" size={24} color="#FFFFFF" />
-                    <Text style={styles.buttonText}>Jouer maintenant</Text>
-                  </View>
-                )}
+                <Ionicons name="person-outline" size={20} color={authMode === 'guest' ? '#FFFFFF' : '#2C3E50'} />
+                <Text style={[styles.modeButtonText, authMode === 'guest' && styles.modeButtonTextActive]}>Invité</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modeButton, authMode === 'email' && styles.modeButtonActive]}
+                onPress={() => setAuthMode('email')}
+              >
+                <Ionicons name="mail-outline" size={20} color={authMode === 'email' ? '#FFFFFF' : '#2C3E50'} />
+                <Text style={[styles.modeButtonText, authMode === 'email' && styles.modeButtonTextActive]}>Compte</Text>
               </TouchableOpacity>
             </View>
 
             {/* Informations supplémentaires */}
             <View style={styles.infoContainer}>
               <Text style={styles.infoText}>
-                • Accès complet aux modes de jeu{'\n'}
-                • Sauvegarde locale des scores{'\n'}
-                • Aucune inscription requise
+                {authMode === 'guest' && '• Accès complet aux modes de jeu\n• Sauvegarde locale des scores\n• Aucune inscription requise'}
+                {authMode === 'email' && isSignUp && '• Synchronisation cloud des scores\n• Profil personnalisé\n• Accès depuis tous vos appareils'}
+                {authMode === 'email' && !isSignUp && '• Récupération de votre profil\n• Synchronisation de vos scores\n• Historique des parties'}
               </Text>
             </View>
           </Animated.View>
@@ -297,6 +423,92 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7F8C8D',
     lineHeight: 20,
+  },
+  formContainer: {
+    marginBottom: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#2C3E50',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+  },
+  verificationText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#2C3E50',
+    borderRadius: 12,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  secondaryButtonText: {
+    color: '#2C3E50',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  authModeSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  modeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: '#2C3E50',
+  },
+  modeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginLeft: 6,
+  },
+  modeButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  authToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 2,
+    marginBottom: 20,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#2C3E50',
+  },
+  toggleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7F8C8D',
+  },
+  toggleButtonTextActive: {
+    color: '#FFFFFF',
   },
 });
 

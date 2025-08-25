@@ -611,9 +611,18 @@ export class GlobalMultiplayerService {
         // Vérifier si c'est une partie rapide et si on a maintenant 2+ joueurs
         const updatedPlayerCount = playerCount + 1;
         if (roomData.settings && roomData.settings.isPublic && updatedPlayerCount >= 2) {
-          // Partie rapide avec 2+ joueurs : démarrer le countdown automatique
-          console.log('⚡ Partie rapide - 2+ joueurs détectés, démarrage countdown...');
-          await this.startQuickMatchCountdown(roomId);
+          // Vérifier le statut actuel de la salle
+          if (roomData.status === 'waiting' || !roomData.status) {
+            // Partie rapide avec 2+ joueurs : démarrer le countdown automatique
+            console.log('⚡ Partie rapide - 2+ joueurs détectés, démarrage countdown...');
+            await this.startQuickMatchCountdown(roomId);
+          } else if (roomData.status === 'countdown') {
+            console.log('⏰ Compte à rebours déjà en cours, pas de nouveau countdown');
+          } else {
+            console.log('🎮 Salle en statut:', roomData.status, '- pas de countdown');
+          }
+        } else if (roomData.settings && roomData.settings.isPublic) {
+          console.log('⏳ Partie rapide - en attente de plus de joueurs (', updatedPlayerCount, '/2)');
         }
         
         console.log('✅ Salle mondiale rejointe avec succès (persistance activée)');
@@ -1120,8 +1129,12 @@ export class GlobalMultiplayerService {
       if (this.currentPlayerId && roomId) {
         console.log('🚪 Quitter la salle:', roomId);
         
+        // Supprimer le joueur de la salle
         const playerRef = ref(database, `globalRooms/${roomId}/players/${this.currentPlayerId}`);
         await remove(playerRef);
+        
+        // Vérifier l'état de la salle après le départ du joueur
+        await this.checkRoomStatusAfterLeave(roomId);
         
         this.removeGlobalRoomListener(roomId);
         this.currentRoomId = null;
@@ -1142,6 +1155,42 @@ export class GlobalMultiplayerService {
         console.error('❌ Erreur quitter salle:', error);
       }
       return { success: false };
+    }
+  }
+
+  // Vérifier l'état de la salle après le départ d'un joueur
+  async checkRoomStatusAfterLeave(roomId) {
+    try {
+      const roomRef = ref(database, `globalRooms/${roomId}`);
+      const snapshot = await get(roomRef);
+      
+      if (snapshot.exists()) {
+        const room = snapshot.val();
+        const players = room.players || {};
+        const playerCount = Object.keys(players).length;
+        
+        // Si la salle était en countdown et qu'il reste moins de 2 joueurs
+        if (room.status === 'countdown' && playerCount < 2) {
+          console.log('⏰ Arrêt du compte à rebours - moins de 2 joueurs');
+          
+          // Remettre la salle en attente
+          await update(roomRef, {
+            status: 'waiting',
+            countdownStarted: null,
+            countdownDuration: null,
+            lastActivity: Date.now()
+          });
+          
+          console.log('⏸️ Salle remise en attente de joueurs');
+        }
+        // Si la salle était en countdown et qu'il reste au moins 2 joueurs, 
+        // le countdown continue normalement
+        else if (room.status === 'countdown' && playerCount >= 2) {
+          console.log('⏰ Compte à rebours maintenu - toujours', playerCount, 'joueurs');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur vérification statut salle:', error);
     }
   }
 
@@ -1455,12 +1504,28 @@ export class GlobalMultiplayerService {
             const room = snapshot.val();
             const playerCount = Object.keys(room.players || {}).length;
             
+            // Vérifications strictes avant de lancer le jeu
             if (room.status === 'countdown' && playerCount >= 2) {
-              console.log('🚀 Lancement automatique partie rapide !');
+              console.log('🚀 Lancement automatique partie rapide !', playerCount, 'joueurs');
               await this.startGame(roomId);
+            } else if (room.status === 'waiting') {
+              console.log('⏸️ Compte à rebours annulé - salle remise en attente');
+            } else if (playerCount < 2) {
+              console.log('❌ Lancement annulé - plus assez de joueurs (', playerCount, ')');
+              // Remettre en attente si pas déjà fait
+              if (room.status === 'countdown') {
+                await update(roomRef, {
+                  status: 'waiting',
+                  countdownStarted: null,
+                  countdownDuration: null,
+                  lastActivity: Date.now()
+                });
+              }
             } else {
               console.log('❌ Conditions non remplies pour lancement auto');
             }
+          } else {
+            console.log('⚠️ Salle supprimée pendant le compte à rebours');
           }
         } catch (error) {
           console.error('❌ Erreur lancement automatique:', error);

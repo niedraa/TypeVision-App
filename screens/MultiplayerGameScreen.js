@@ -194,26 +194,45 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
   const handleTextChange = async (text) => {
     if (!gameStarted || isFinished) return;
     
-    setUserInput(text);
+    // Nouvelle logique plus stricte : vérifier chaque caractère au fur et à mesure
+    let validText = '';
+    let hasError = false;
     
-    const newIndex = text.length;
-    let newErrors = errors;
-    
-    // Vérifier les erreurs
-    for (let i = 0; i < newIndex; i++) {
-      if (text[i] !== gameText[i]) {
-        // Ne pas permettre la progression avec des erreurs
-        return;
+    for (let i = 0; i < text.length && i < gameText.length; i++) {
+      if (text[i] === gameText[i]) {
+        validText += text[i];
+      } else {
+        // Dès qu'il y a une erreur, on s'arrête là
+        hasError = true;
+        break;
       }
     }
     
-    setCurrentIndex(newIndex);
+    // Si l'utilisateur essaie de taper plus que ce qui est validé, on bloque
+    if (text.length > validText.length) {
+      // On ne met à jour l'input qu'avec le texte valide
+      setUserInput(validText);
+      console.log('❌ Erreur détectée ! Impossible de continuer. Corrigez d\'abord l\'erreur.');
+      return;
+    }
+    
+    // Mettre à jour avec le texte valide
+    setUserInput(validText);
+    setCurrentIndex(validText.length);
+    
+    // Compter les erreurs (normalement 0 avec la nouvelle logique)
+    let newErrors = 0;
+    for (let i = 0; i < validText.length; i++) {
+      if (validText[i] !== gameText[i]) {
+        newErrors++;
+      }
+    }
     setErrors(newErrors);
     
     await updateProgress();
     
     // Vérifier si le texte est terminé
-    if (newIndex >= gameText.length) {
+    if (validText.length >= gameText.length) {
       finishGame();
     }
   };

@@ -1,7 +1,7 @@
 // Configuration Firebase pour TypeVision - PRODUCTION
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, OAuthProvider, signInWithCredential } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration Firebase RÉELLE - TypeVision avec vos clés

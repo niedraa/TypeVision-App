@@ -10,10 +10,11 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@stripe/stripe-js": "^7.8.0",
     "axios": "^1.11.0",
     "expo": "53.0.22",
+    "expo-apple-authentication": "~7.2.4",
     "expo-audio": "^0.4.9",
     "expo-av": "~15.1.7",
     "expo-crypto": "^14.1.5",
@@ -24,7 +25,8 @@
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
     "react-native-web": "^0.20.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "expo-image-picker": "~16.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",

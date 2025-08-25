@@ -14,7 +14,15 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Cette application a besoin d'accéder à votre galerie photo pour vous permettre de changer votre photo de profil."
+      }
+    },
+    "android": {
+      "permissions": [
+        "READ_EXTERNAL_STORAGE"
+      ]
     }
   }
 }
