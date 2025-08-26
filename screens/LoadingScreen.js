@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
 const LoadingScreen = () => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const logoTextAnim = useRef(new Animated.Value(0)).current;
@@ -139,7 +141,7 @@ const LoadingScreen = () => {
           ]}
         >
           <Text style={styles.logoText}>TypeVision</Text>
-          <Text style={styles.logoSubtext}>Maîtrisez la frappe</Text>
+          <Text style={styles.logoSubtext}>{t('masterTyping')}</Text>
         </Animated.View>
       </Animated.View>
 
@@ -188,7 +190,7 @@ const LoadingScreen = () => {
             }
           ]} />
         </View>
-        <Text style={styles.loadingText}>Chargement...</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       </Animated.View>
     </View>
   );

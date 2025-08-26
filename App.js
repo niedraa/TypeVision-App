@@ -11,17 +11,21 @@ import LoginScreen from './screens/LoginScreen';
 import { FadeTransition, ScaleTransition } from './components/Transitions';
 import { AnimatedButton } from './components/AnimatedButton';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
     </ThemeProvider>
   );
 }
 
 function AppContent() {
   const { theme } = useTheme();
+  const { t, currentLanguage, changeLanguage } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -142,9 +146,26 @@ function AppContent() {
             </View>
           </View>
           <Text style={styles.title}>TypeVision</Text>
+          
+          {/* Sélecteur de langue */}
+          <View style={styles.languageSelector}>
+            <TouchableOpacity 
+              style={[styles.flagButton, currentLanguage === 'fr' && styles.activeFlagButton]}
+              onPress={() => changeLanguage('fr')}
+            >
+              <Text style={styles.flag}>🇫🇷</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.flagButton, currentLanguage === 'en' && styles.activeFlagButton]}
+              onPress={() => changeLanguage('en')}
+            >
+              <Text style={styles.flag}>🇬🇧</Text>
+            </TouchableOpacity>
+          </View>
+          
           {currentUser && (
             <Text style={styles.welcomeText}>
-              Bienvenue, {currentUser.username}
+              {t('welcome')}, {currentUser.username}
             </Text>
           )}
         </View>
@@ -155,28 +176,28 @@ function AppContent() {
             style={styles.menuButton}
             onPress={() => setCurrentScreen('multiplayer')}
           >
-            <Text style={styles.menuButtonText}>Multiplayer</Text>
+            <Text style={styles.menuButtonText}>{t('multiplayer')}</Text>
           </AnimatedButton>
 
           <AnimatedButton
             style={styles.menuButton}
             onPress={() => setCurrentScreen('shop')}
           >
-            <Text style={styles.menuButtonText}>Shop</Text>
+            <Text style={styles.menuButtonText}>{t('shop')}</Text>
           </AnimatedButton>
 
           <AnimatedButton 
             style={styles.menuButton}
             onPress={() => setCurrentScreen('settings')}
           >
-            <Text style={styles.menuButtonText}>Settings</Text>
+            <Text style={styles.menuButtonText}>{t('settings')}</Text>
           </AnimatedButton>
 
           <AnimatedButton 
             style={[styles.menuButton, styles.profileButton]}
             onPress={() => setCurrentScreen('profile')}
           >
-            <Text style={styles.menuButtonText}>Profile</Text>
+            <Text style={styles.menuButtonText}>{t('profile')}</Text>
           </AnimatedButton>
         </View>
       </SafeAreaView>
@@ -243,6 +264,26 @@ const createStyles = (theme) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     fontWeight: '500',
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    gap: 10,
+  },
+  flagButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  activeFlagButton: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: theme.colors.text,
+  },
+  flag: {
+    fontSize: 24,
   },
   menuContainer: {
     flex: 1,

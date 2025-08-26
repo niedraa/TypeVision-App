@@ -13,12 +13,15 @@ import {
 } from 'react-native';
 // Utiliser le service multijoueur mondial
 import { globalMultiplayerService } from '../services/globalMultiplayerService';
+import UserStatsService from '../services/UserStatsService';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
-export default function MultiplayerGameScreen({ route, navigation, roomData, onGameComplete, onBack }) {
+export default function MultiplayerGameScreen({ route, navigation, roomData, currentUser, onGameComplete, onBack }) {
   // Support pour les deux façons d'appeler le composant
   const actualRoomData = roomData || route?.params?.roomData;
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const styles = createStyles(theme);
 
   const [gameText, setGameText] = useState('');
@@ -34,9 +37,72 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
   const [finalRanking, setFinalRanking] = useState([]);
   const [finishTimer, setFinishTimer] = useState(null);
   const [gameStatus, setGameStatus] = useState('playing');
+  const [showStartCountdown, setShowStartCountdown] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(3);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
+  const countdownAnim = useRef(new Animated.Value(1)).current;
+
+  // Fonction pour gérer le countdown de démarrage
+  const startGameCountdown = () => {
+    let count = 3;
+    setCountdownValue(count);
+    
+    const animateCountdown = () => {
+      Animated.sequence([
+        Animated.timing(countdownAnim, {
+          toValue: 1.2,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(countdownAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    };
+    
+    // Animation initiale
+    animateCountdown();
+    
+    const countdownInterval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        setCountdownValue(count);
+        animateCountdown();
+      } else if (count === 0) {
+        setCountdownValue(t('go'));
+        // Animation spéciale pour "Commencez !"
+        Animated.sequence([
+          Animated.timing(countdownAnim, {
+            toValue: 1.5,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(countdownAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        // Démarrer le jeu après "Commencez !"
+        clearInterval(countdownInterval);
+        setShowStartCountdown(false);
+        setGameStarted(true);
+        setStartTime(Date.now());
+        
+        // Focus sur l'input après un petit délai
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 100);
+      }
+    }, 1000);
+  };
 
   useEffect(() => {
     console.log('📊 RoomData reçue:', JSON.stringify(actualRoomData, null, 2));
@@ -44,17 +110,11 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     if (actualRoomData?.gameState?.text) {
       setGameText(actualRoomData.gameState.text);
       
-      console.log('🚀 Démarrage immédiat du jeu');
+      console.log('🚀 Début du countdown de préparation');
       
-      setGameStarted(true);
-      setStartTime(Date.now());
-      
-      // Focus sur l'input après un petit délai
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
-      }, 100);
+      // Commencer le countdown au lieu de démarrer immédiatement
+      setShowStartCountdown(true);
+      startGameCountdown();
     }
 
     // Écouter les changements des joueurs et leur état de frappe
@@ -251,12 +311,62 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     
     await globalMultiplayerService.finishPlayerGame(actualRoomData.id, gameResult);
     
+    // Mettre à jour les statistiques utilisateur
+    if (currentUser?.id) {
+      try {
+        const gameData = {
+          won: false, // On déterminera cela plus tard avec le ranking
+          score: Math.round(finalStats.wpm * finalStats.accuracy), // Score basé sur WPM et précision
+          wpm: finalStats.wpm,
+          accuracy: finalStats.accuracy,
+          playTime: Math.round((Date.now() - startTime) / 1000), // en secondes
+          wordsTyped: Math.round(currentIndex / 5), // approximation
+          isMultiplayer: true,
+          experience: Math.round(finalStats.wpm * 10) // XP basée sur WPM
+        };
+        
+        // Mettre à jour les stats
+        await UserStatsService.updateGameStats(currentUser.id, gameData);
+        console.log('✅ Statistiques mises à jour:', gameData);
+      } catch (error) {
+        console.error('❌ Erreur mise à jour statistiques:', error);
+      }
+    }
+    
     // Vérifier si tous ont terminé
     const allFinished = await globalMultiplayerService.checkAllPlayersFinished(actualRoomData.id);
     if (allFinished) {
       setTimeout(async () => {
         const ranking = await globalMultiplayerService.getFinalRanking(actualRoomData.id);
         setFinalRanking(ranking);
+        
+        // Mettre à jour le statut de victoire si on a le ranking
+        if (currentUser?.id && ranking && ranking.length > 0) {
+          const currentPlayerRank = ranking.findIndex(player => player.id === globalMultiplayerService.currentPlayerId);
+          const isWinner = currentPlayerRank === 0; // Premier = gagnant
+          
+          if (isWinner) {
+            try {
+              // Mettre à jour avec la victoire
+              const winGameData = {
+                won: true,
+                score: Math.round(finalStats.wpm * finalStats.accuracy),
+                wpm: finalStats.wpm,
+                accuracy: finalStats.accuracy,
+                playTime: Math.round((Date.now() - startTime) / 1000),
+                wordsTyped: Math.round(currentIndex / 5),
+                isMultiplayer: true,
+                experience: Math.round(finalStats.wpm * 15) // Bonus XP pour victoire
+              };
+              
+              await UserStatsService.updateGameStats(currentUser.id, winGameData);
+              console.log('🏆 Victoire enregistrée!');
+            } catch (error) {
+              console.error('❌ Erreur mise à jour victoire:', error);
+            }
+          }
+        }
+        
         setShowResults(true);
       }, 1000);
     }
@@ -409,7 +519,7 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
           style={styles.backButton}
           onPress={onBack}
         >
-          <Text style={styles.backButtonText}>Retour au lobby</Text>
+          <Text style={styles.backButtonText}>{t('back_to_lobby')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -428,38 +538,55 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Timer de fin */}
-      {finishTimer && finishTimer.active && (
-        <View style={styles.finishTimerContainer}>
-          <View style={styles.finishTimerContent}>
-            <Text style={styles.finishTimerTitle}>
-              🏁 Un joueur a terminé !
-            </Text>
-            <Text style={styles.finishTimerText}>
-              Temps restant: {finishTimer.remaining && !isNaN(finishTimer.remaining) ? Math.max(0, Math.ceil(finishTimer.remaining / 1000)) : 0}s
-            </Text>
-            <View style={styles.finishTimerBar}>
-              <View 
-                style={[
-                  styles.finishTimerProgress, 
-                  { 
-                    width: `${finishTimer.remaining && !isNaN(finishTimer.remaining) ? Math.max(0, (finishTimer.remaining / 20000) * 100) : 0}%`,
-                    backgroundColor: (finishTimer.remaining && finishTimer.remaining < 5000) ? '#DC3545' : (finishTimer.remaining && finishTimer.remaining < 10000) ? '#F59E0B' : '#DC3545'
-                  }
-                ]} 
-              />
-            </View>
-          </View>
-        </View>
-      )}
-      
       {/* Players Progress */}
       <ScrollView 
-        style={styles.playersProgress}
+        style={[
+          styles.playersProgress,
+          finishTimer && finishTimer.active && styles.playersProgressCompact
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {renderPlayerProgress()}
       </ScrollView>
+      
+      {/* Timer de fin compact */}
+      {finishTimer && finishTimer.active && (
+        <View style={styles.finishTimerCompact}>
+          <Text style={styles.finishTimerCompactText}>
+            🏁 Fin dans {finishTimer.remaining && !isNaN(finishTimer.remaining) ? Math.max(0, Math.ceil(finishTimer.remaining / 1000)) : 0}s
+          </Text>
+          <View style={styles.finishTimerCompactBar}>
+            <View 
+              style={[
+                styles.finishTimerCompactProgress, 
+                { 
+                  width: `${finishTimer.remaining && !isNaN(finishTimer.remaining) ? Math.max(0, (finishTimer.remaining / 20000) * 100) : 0}%`,
+                  backgroundColor: (finishTimer.remaining && finishTimer.remaining < 5000) ? '#DC3545' : (finishTimer.remaining && finishTimer.remaining < 10000) ? '#F59E0B' : '#DC3545'
+                }
+              ]} 
+            />
+          </View>
+        </View>
+      )}
+      
+      {/* Countdown de démarrage */}
+      {showStartCountdown && (
+        <View style={styles.startCountdownOverlay}>
+          <View style={styles.startCountdownContainer}>
+            <Text style={styles.startCountdownReady}>{t('ready')}</Text>
+            <Animated.Text 
+              style={[
+                typeof countdownValue === 'string' ? styles.startCountdownGo : styles.startCountdownNumber,
+                {
+                  transform: [{ scale: countdownAnim }]
+                }
+              ]}
+            >
+              {typeof countdownValue === 'number' ? countdownValue : countdownValue}
+            </Animated.Text>
+          </View>
+        </View>
+      )}
       
       {/* Game Text */}
       <View style={styles.textContainer}>
@@ -478,7 +605,7 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, onG
           value={userInput}
           onChangeText={handleTextChange}
           multiline
-          placeholder={gameStarted ? "Commencez à taper..." : ""}
+          placeholder={gameStarted ? t('start_typing') : ""}
           editable={gameStarted && !isFinished}
           autoCorrect={false}
           autoCapitalize="none"
@@ -495,9 +622,12 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   playersProgress: {
-    maxHeight: 300,
+    maxHeight: 120,
     paddingHorizontal: 15,
     paddingTop: 10,
+  },
+  playersProgressCompact: {
+    maxHeight: 80,
   },
   playerProgressCard: {
     backgroundColor: theme.colors.surface,
@@ -557,6 +687,8 @@ const createStyles = (theme) => StyleSheet.create({
   },
   textContainer: {
     flex: 1,
+    maxHeight: 300,
+    minHeight: 200,
     margin: 15,
     backgroundColor: 'white',
     borderRadius: 12,
@@ -740,5 +872,70 @@ const createStyles = (theme) => StyleSheet.create({
     height: '100%',
     backgroundColor: '#DC3545',
     borderRadius: 4,
+  },
+  finishTimerCompact: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FEC107',
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  finishTimerCompactText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#856404',
+    flex: 1,
+  },
+  finishTimerCompactBar: {
+    width: 60,
+    height: 4,
+    backgroundColor: '#F8D7DA',
+    borderRadius: 2,
+    marginLeft: 8,
+    overflow: 'hidden',
+  },
+  finishTimerCompactProgress: {
+    height: '100%',
+    backgroundColor: '#DC3545',
+    borderRadius: 2,
+  },
+  startCountdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(245, 245, 245, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  startCountdownContainer: {
+    alignItems: 'center',
+  },
+  startCountdownReady: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  startCountdownNumber: {
+    fontSize: 72,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    textAlign: 'center',
+  },
+  startCountdownGo: {
+    fontSize: 48,
+    fontWeight: '600',
+    color: '#2C3E50',
+    textAlign: 'center',
   },
 });

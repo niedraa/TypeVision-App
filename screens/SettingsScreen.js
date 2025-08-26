@@ -18,9 +18,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function SettingsScreen({ onBack }) {
   const { theme, isDark, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [settings, setSettings] = useState({
     soundEnabled: true,
     vibrationEnabled: true,
@@ -257,42 +259,42 @@ export default function SettingsScreen({ onBack }) {
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Paramètres</Text>
+          <Text style={styles.headerTitle}>{t('settings')}</Text>
         </View>
 
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           
           {/* Section Audio & Visuel */}
-          <SectionHeader title="Audio & Visuel" />
+          <SectionHeader title={t('audio_visual')} />
           <View style={styles.section}>
             <SettingItem
               icon={<Ionicons name="volume-high" size={24} color={theme.colors.text} />}
-              title="Sons"
-              subtitle="Activer les effets sonores"
+              title={t('sounds')}
+              subtitle={t('sound_effects')}
               hasSwitch
               switchValue={settings.soundEnabled}
               onToggle={() => toggleSetting('soundEnabled')}
             />
             <SettingItem
               icon={<MaterialIcons name="vibration" size={24} color={theme.colors.text} />}
-              title="Vibrations"
-              subtitle="Retour haptique"
+              title={t('vibrations')}
+              subtitle={t('haptic_feedback')}
               hasSwitch
               switchValue={settings.vibrationEnabled}
               onToggle={() => toggleSetting('vibrationEnabled')}
             />
             <SettingItem
               icon={<Ionicons name="moon" size={24} color={theme.colors.text} />}
-              title="Mode sombre"
-              subtitle="Interface en mode sombre"
+              title={t('dark_mode')}
+              subtitle={t('dark_interface')}
               hasSwitch
               switchValue={settings.darkModeEnabled}
               onToggle={() => toggleSetting('darkModeEnabled')}
             />
             <SettingItem
               icon={<MaterialIcons name="contrast" size={24} color={theme.colors.text} />}
-              title="Contraste élevé"
-              subtitle="Améliore la lisibilité"
+              title={t('high_contrast')}
+              subtitle={t('improve_readability')}
               hasSwitch
               switchValue={settings.highContrastEnabled}
               onToggle={() => toggleSetting('highContrastEnabled')}
@@ -300,12 +302,12 @@ export default function SettingsScreen({ onBack }) {
           </View>
 
           {/* Section Notifications */}
-          <SectionHeader title="Notifications" />
+          <SectionHeader title={t('notifications')} />
           <View style={styles.section}>
             <SettingItem
               icon={<Ionicons name="notifications" size={24} color={theme.colors.text} />}
-              title="Notifications push"
-              subtitle="Recevoir des notifications"
+              title={t('push_notifications')}
+              subtitle={t('receive_notifications')}
               hasSwitch
               switchValue={settings.notificationsEnabled}
               onToggle={() => toggleSetting('notificationsEnabled')}
@@ -313,46 +315,46 @@ export default function SettingsScreen({ onBack }) {
           </View>
 
           {/* Section Support */}
-          <SectionHeader title="Support" />
+          <SectionHeader title={t('support')} />
           <View style={styles.section}>
             <SettingItem
               icon={<MaterialIcons name="help" size={24} color={theme.colors.text} />}
-              title="Centre d'aide"
-              subtitle="FAQ et guide d'utilisation"
+              title={t('help')}
+              subtitle={t('help_desc')}
               onPress={openHelp}
               showArrow
             />
             <SettingItem
               icon={<MaterialIcons name="feedback" size={24} color={theme.colors.text} />}
-              title="Signaler un problème"
-              subtitle="Nous faire part d'un bug"
+              title={t('report_bug')}
+              subtitle={t('report_bug_desc')}
               onPress={reportProblem}
               showArrow
             />
             <SettingItem
               icon={<MaterialIcons name="star-rate" size={24} color={theme.colors.text} />}
-              title="Noter l'application"
-              subtitle="Donnez votre avis"
+              title={t('rate_app')}
+              subtitle={t('rate_app_desc')}
               onPress={rateApp}
               showArrow
             />
           </View>
 
           {/* Section Actions */}
-          <SectionHeader title="Actions" />
+          <SectionHeader title={t('account_section')} />
           <View style={styles.section}>
             <SettingItem
               icon={<MaterialIcons name="refresh" size={24} color={theme.colors.warning} />}
-              title="Réinitialiser les progrès"
-              subtitle="Supprimer tous les progrès"
+              title={t('reset_progress')}
+              subtitle={t('reset_progress_desc')}
               textColor={theme.colors.warning}
               onPress={handleResetProgress}
               showArrow
             />
             <SettingItem
               icon={<MaterialIcons name="delete-forever" size={24} color="#F44336" />}
-              title="Supprimer le compte"
-              subtitle="Suppression définitive"
+              title={t('delete_account')}
+              subtitle={t('delete_account_desc')}
               textColor="#F44336"
               onPress={handleDeleteAccount}
               showArrow

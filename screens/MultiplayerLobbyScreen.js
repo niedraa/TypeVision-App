@@ -15,8 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { globalMultiplayerService } from '../services/globalMultiplayerService';
 import { gameData } from '../data/gameData';
 import InlineCountdown from '../components/InlineCountdown';
+import { useLanguage } from '../contexts/LanguageContext';
 
-const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
+const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) => {
+  const { t } = useLanguage();
   const [players, setPlayers] = useState({});
   const [room, setRoom] = useState(roomData || {});
   const [isReady, setIsReady] = useState(false);
@@ -27,7 +29,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
     // Vérifier si roomData existe et a les bonnes propriétés
     if (!roomData || !roomData.settings || !roomData.settings.maxPlayers) {
       console.error('❌ Données de salle invalides:', roomData);
-      Alert.alert('Erreur', 'Données de salle invalides');
+      Alert.alert(t('error'), t('invalidRoomData'));
       onBack();
       return;
     }
@@ -105,15 +107,15 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
     
     const result = await globalMultiplayerService.startGame(room.id, gameText);
     if (!result.success) {
-      Alert.alert('Erreur', result.error || 'Impossible de démarrer la partie');
+      Alert.alert(t('error'), result.error || t('cannotStartGame'));
     }
   };
 
   const shareRoomCode = async () => {
     try {
       await Share.share({
-        message: `Rejoins ma partie TypeVision ! Code: ${room.code}`,
-        title: 'Invitation TypeVision'
+        message: `${t('joinMyGame')} ! ${t('room_code')}: ${room.code}`,
+        title: t('typevisionInvitation')
       });
     } catch (error) {
       console.log('Erreur partage:', error);
@@ -127,12 +129,12 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
 
   const leaveRoom = async () => {
     Alert.alert(
-      'Quitter la salle',
-      'Êtes-vous sûr de vouloir quitter ?',
+      t('leave_room'),
+      t('confirmLeaveRoom'),
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         { 
-          text: 'Quitter', 
+          text: t('leave'), 
           style: 'destructive',
           onPress: async () => {
             await globalMultiplayerService.leaveRoom(room.id);
@@ -208,7 +210,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
 
       {/* Players List */}
       <View style={styles.playersSection}>
-        <Text style={styles.sectionTitle}>Joueurs</Text>
+        <Text style={styles.sectionTitle}>{t('players')}</Text>
         <FlatList
           data={playersArray}
           renderItem={renderPlayer}
@@ -220,18 +222,18 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
 
       {/* Game Settings */}
       <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Paramètres</Text>
+        <Text style={styles.sectionTitle}>{t('settings')}</Text>
         <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Mode de jeu:</Text>
+          <Text style={styles.settingLabel}>{t('gameMode')}:</Text>
           <Text style={styles.settingValue}>
-            {room.settings.gameMode === 'race' ? 'Course' : 'Endurance'}
+            {room.settings.gameMode === 'race' ? t('race') : t('endurance')}
           </Text>
         </View>
         <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Difficulté:</Text>
+          <Text style={styles.settingLabel}>{t('difficulty')}:</Text>
           <Text style={styles.settingValue}>
-            {room.settings.difficulty === 'easy' ? 'Facile' : 
-             room.settings.difficulty === 'medium' ? 'Moyen' : 'Difficile'}
+            {room.settings.difficulty === 'easy' ? t('easy') : 
+             room.settings.difficulty === 'medium' ? t('medium') : t('hard')}
           </Text>
         </View>
       </View>
@@ -248,7 +250,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
               onPress={startGame}
               disabled={playersArray.length < 2 || (!room.settings?.isPublic && readyCount < playersArray.length)}
             >
-              <Text style={styles.startButtonText}>Commencer la partie</Text>
+              <Text style={styles.startButtonText}>{t('start_game')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity 
@@ -256,7 +258,7 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
               onPress={toggleReady}
             >
               <Text style={[styles.readyButtonText, isReady && styles.readyButtonTextActive]}>
-                {isReady ? '✅ Prêt' : 'Je suis prêt'}
+                {isReady ? `✅ ${t('ready')}` : t('imReady')}
               </Text>
             </TouchableOpacity>
           )}
@@ -266,9 +268,9 @@ const MultiplayerLobbyScreen = ({ roomData, onStartGame, onBack }) => {
       {/* Affichage spécial pour les parties rapides */}
       {room.settings?.isPublic && (
         <View style={styles.quickMatchSection}>
-          <Text style={styles.quickMatchTitle}>🚀 Partie Rapide</Text>
+          <Text style={styles.quickMatchTitle}>🚀 {t('quickMatch')}</Text>
           <Text style={styles.quickMatchText}>
-            La partie commencera automatiquement quand suffisamment de joueurs seront connectés
+            {t('gameWillStartAutomatically')}
           </Text>
         </View>
       )}

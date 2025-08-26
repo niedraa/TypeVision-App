@@ -7,7 +7,6 @@ import {
   StatusBar, 
   ScrollView,
   Alert,
-  Switch,
   Image,
   TouchableOpacity,
   Platform
@@ -19,9 +18,11 @@ import { AnimatedButton } from '../components/AnimatedButton';
 import { useTheme } from '../contexts/ThemeContext';
 import UserDataService from '../services/UserDataService';
 import UserStatsService from '../services/UserStatsService';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
   const { theme } = useTheme();
+  const { t } = useLanguage();
   const [profileImage, setProfileImage] = useState(user?.profileImage || null);
   
   // États pour les vraies données
@@ -136,6 +137,23 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
     }
   };
 
+  // Fonction pour rafraîchir toutes les données
+  const refreshUserData = async () => {
+    console.log('🔄 Rafraîchissement des données utilisateur...');
+    await loadAllUserData();
+  };
+
+  // Écouter les changements de focus pour rafraîchir
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (user?.id) {
+        refreshUserData();
+      }
+    }, 30000); // Rafraîchir toutes les 30 secondes
+
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   const handleEditProfile = () => {
     Alert.alert('Profil', 'Fonctionnalité d\'édition bientôt disponible');
   };
@@ -222,18 +240,23 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     Alert.alert(
       'Supprimer le compte',
-      'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
+      'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible.',
       [
         { text: 'Annuler', style: 'cancel' },
         { 
           text: 'Supprimer', 
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Compte supprimé', 'Votre compte a été supprimé avec succès');
-            onLogout();
+          onPress: async () => {
+            try {
+              await UserDataService.clearAllUserData(user?.id);
+              Alert.alert('Compte supprimé', 'Votre compte et toutes vos données ont été supprimés.');
+              if (onLogout) onLogout();
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible de supprimer le compte.');
+            }
           }
         }
       ]
@@ -306,6 +329,15 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
 
+        {/* Bouton rafraîchir */}
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={refreshUserData}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.refreshIcon}>🔄</Text>
+        </TouchableOpacity>
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Header Profile */}
           <View style={styles.header}>
@@ -324,18 +356,18 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
                 <Text style={styles.editPhotoIcon}>📷</Text>
               </View>
             </TouchableOpacity>
-            <Text style={styles.username}>{user?.username || 'Utilisateur'}</Text>
+            <Text style={styles.username}>{user?.username || t('guest_user')}</Text>
             <Text style={styles.userType}>
-              {user?.isGuest ? 'Compte Invité' : 'Compte Connecté'}
+              {user?.isGuest ? t('guest_user') : t('user_profile')}
             </Text>
             <TouchableOpacity style={styles.changePhotoButton} onPress={pickImage}>
-              <Text style={styles.changePhotoText}>Changer la photo</Text>
+              <Text style={styles.changePhotoText}>{t('change_avatar')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Statistiques */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Statistiques</Text>
+            <Text style={styles.sectionTitle}>{t('statistics')}</Text>
             <View style={styles.statsGrid}>
               {statsData.map((stat, index) => (
                 <View key={index} style={styles.statCard}>
@@ -348,7 +380,7 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
 
           {/* Succès */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Succès</Text>
+            <Text style={styles.sectionTitle}>{t('achievements')}</Text>
             <View style={styles.achievementsList}>
               {achievements.map((achievement, index) => (
                 <View key={index} style={[
@@ -378,41 +410,6 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
                   {achievement.unlocked && <Text style={styles.achievementBadge}>✓</Text>}
                 </View>
               ))}
-            </View>
-          </View>
-
-          {/* Paramètres */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Paramètres</Text>
-            
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Notifications</Text>
-              <Switch
-                value={settings?.notifications ?? true}
-                onValueChange={(value) => updateUserSettings({ ...settings, notifications: value })}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={settings?.notifications ? '#FFFFFF' : '#FFFFFF'}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Sons</Text>
-              <Switch
-                value={settings?.soundEnabled ?? true}
-                onValueChange={(value) => updateUserSettings({ ...settings, soundEnabled: value })}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={settings?.soundEnabled ? '#FFFFFF' : '#FFFFFF'}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <Text style={styles.settingLabel}>Vibrations</Text>
-              <Switch
-                value={settings?.vibrationEnabled ?? true}
-                onValueChange={(value) => updateUserSettings({ ...settings, vibrationEnabled: value })}
-                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-                thumbColor={settings?.vibrationEnabled ? '#FFFFFF' : '#FFFFFF'}
-              />
             </View>
           </View>
 
@@ -474,6 +471,27 @@ const createStyles = (theme) => StyleSheet.create({
     fontSize: 20,
     color: theme.colors.text,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  refreshButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 1000,
+  },
+  refreshIcon: {
+    fontSize: 18,
     textAlign: 'center',
   },
   content: {

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Linking } from 'react-native';
 import { StripeService } from './services/StripeService';
 import { AnimatedButton } from './components/AnimatedButton';
+import { useLanguage } from './contexts/LanguageContext';
 
 export default function ShopScreen({ onBack }) {
+  const { t } = useLanguage();
   const [selectedTab, setSelectedTab] = useState('Skins');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +23,7 @@ export default function ShopScreen({ onBack }) {
       setProducts(stripeProducts);
     } catch (error) {
       console.error('Erreur lors du chargement des produits:', error);
-      Alert.alert('Erreur', 'Impossible de charger les produits');
+      Alert.alert(t('error'), t('errorLoadingProducts'));
     } finally {
       setLoading(false);
     }
@@ -32,7 +34,7 @@ export default function ShopScreen({ onBack }) {
       setPurchasing(product.id);
       
       if (!product.price?.id) {
-        Alert.alert('Erreur', 'Prix non disponible pour ce produit');
+        Alert.alert(t('error'), t('priceNotAvailable'));
         return;
       }
 
@@ -51,13 +53,13 @@ export default function ShopScreen({ onBack }) {
             if (supported) {
               await Linking.openURL(session.url);
             } else {
-              Alert.alert('Erreur', 'Impossible d\'ouvrir la page de paiement');
+              Alert.alert(t('error'), t('cannotOpenPaymentPage'));
             }
           } catch (linkingError) {
             console.error('Erreur Linking:', linkingError);
             Alert.alert(
-              'Paiement',
-              `Copiez ce lien pour procéder au paiement :\n\n${session.url}`,
+              t('payment'),
+              `${t('copyLinkForPayment')} :\n\n${session.url}`,
               [{ text: 'OK' }]
             );
           }
@@ -65,7 +67,7 @@ export default function ShopScreen({ onBack }) {
       }
     } catch (error) {
       console.error('Erreur lors de l\'achat:', error);
-      Alert.alert('Erreur', 'Impossible de procéder au paiement');
+      Alert.alert(t('error'), t('cannotProcessPayment'));
     } finally {
       setPurchasing(null);
     }
@@ -140,7 +142,7 @@ export default function ShopScreen({ onBack }) {
         {product.description}
       </Text>
       <Text style={styles.itemPrice}>
-        {product.price?.formatted || 'Prix non disponible'}
+        {product.price?.formatted || t('priceNotAvailable')}
       </Text>
       <AnimatedButton 
         style={[styles.purchaseButton, purchasing === product.id && styles.purchaseButtonDisabled]}
@@ -150,7 +152,7 @@ export default function ShopScreen({ onBack }) {
         {purchasing === product.id ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text style={styles.purchaseButtonText}>Acheter</Text>
+          <Text style={styles.purchaseButtonText}>{t('buy')}</Text>
         )}
       </AnimatedButton>
     </View>
@@ -163,12 +165,12 @@ export default function ShopScreen({ onBack }) {
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Shop</Text>
+          <Text style={styles.title}>{t('shop')}</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2C3E50" />
-          <Text style={styles.loadingText}>Chargement des produits...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </View>
     );
@@ -181,7 +183,7 @@ export default function ShopScreen({ onBack }) {
         <AnimatedButton onPress={onBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </AnimatedButton>
-        <Text style={styles.title}>Shop</Text>
+        <Text style={styles.title}>{t('shop')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -192,7 +194,7 @@ export default function ShopScreen({ onBack }) {
           onPress={() => setSelectedTab('Skins')}
         >
           <Text style={[styles.tabText, selectedTab === 'Skins' && styles.activeTabText]}>
-            Skins
+            {t('skins')}
           </Text>
         </AnimatedButton>
         <AnimatedButton 
@@ -200,7 +202,7 @@ export default function ShopScreen({ onBack }) {
           onPress={() => setSelectedTab('Levels')}
         >
           <Text style={[styles.tabText, selectedTab === 'Levels' && styles.activeTabText]}>
-            Levels
+            {t('levels')}
           </Text>
         </AnimatedButton>
       </View>
@@ -212,9 +214,9 @@ export default function ShopScreen({ onBack }) {
             products.map(renderProductItem)
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>Aucun produit disponible</Text>
+              <Text style={styles.emptyStateText}>{t('noProductsAvailable')}</Text>
               <TouchableOpacity style={styles.refreshButton} onPress={loadProducts}>
-                <Text style={styles.refreshButtonText}>Actualiser</Text>
+                <Text style={styles.refreshButtonText}>{t('refresh')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -223,7 +225,7 @@ export default function ShopScreen({ onBack }) {
         {/* Restore Purchases Button */}
         {products.length > 0 && (
           <TouchableOpacity style={styles.restoreButton}>
-            <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+            <Text style={styles.restoreButtonText}>{t('restorePurchases')}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

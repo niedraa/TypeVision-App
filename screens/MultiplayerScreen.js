@@ -19,11 +19,13 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { globalMultiplayerService } from '../services/globalMultiplayerService';
 import MultiplayerLobbyScreen from './MultiplayerLobbyScreen';
 import MultiplayerGameScreen from './MultiplayerGameScreen';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function MultiplayerScreen({ onBack, currentUser }) {
+  const { t } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState('menu'); // menu, lobby, game
   const [roomCode, setRoomCode] = useState('');
-  const [playerName, setPlayerName] = useState(currentUser?.username || 'Joueur');
+  const [playerName, setPlayerName] = useState(currentUser?.username || t('player'));
   const [loading, setLoading] = useState(false);
   const [roomData, setRoomData] = useState(null);
   const [globalStats, setGlobalStats] = useState(null);
@@ -59,11 +61,11 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
         setRoomData(result.roomData);
         setCurrentScreen('lobby');
       } else {
-        Alert.alert('Erreur', result.error || 'Impossible de trouver une partie mondiale');
+        Alert.alert(t('error'), result.error || t('cannotFindGlobalGame'));
       }
     } catch (error) {
       console.error('Erreur partie rapide:', error);
-      Alert.alert('Erreur', 'Problème de connexion au serveur mondial');
+      Alert.alert(t('error'), t('globalServerConnectionProblem'));
     }
     setLoading(false);
   };
@@ -82,18 +84,18 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
         setRoomData(result.roomData);
         setCurrentScreen('lobby');
       } else {
-        Alert.alert('Erreur', result.error || 'Impossible de créer la salle mondiale');
+        Alert.alert(t('error'), result.error || t('cannotCreateGlobalRoom'));
       }
     } catch (error) {
       console.error('Erreur création salle:', error);
-      Alert.alert('Erreur', 'Problème de connexion au serveur mondial');
+      Alert.alert(t('error'), t('globalServerConnectionProblem'));
     }
     setLoading(false);
   };
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer un code de salle');
+      Alert.alert(t('error'), t('pleaseEnterRoomCode'));
       return;
     }
     
@@ -105,11 +107,11 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
         setRoomData(result.roomData);
         setCurrentScreen('lobby');
       } else {
-        Alert.alert('Erreur', result.error || 'Impossible de rejoindre la salle mondiale');
+        Alert.alert(t('error'), result.error || t('cannotJoinGlobalRoom'));
       }
     } catch (error) {
       console.error('Erreur rejoindre salle:', error);
-      Alert.alert('Erreur', 'Problème de connexion au serveur mondial');
+      Alert.alert(t('error'), t('globalServerConnectionProblem'));
     }
     setLoading(false);
   };
@@ -134,7 +136,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Connexion...</Text>
+          <Text style={styles.loadingText}>{t('connecting')}...</Text>
         </View>
       </SafeAreaView>
     );
@@ -144,6 +146,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
     return (
       <MultiplayerLobbyScreen
         roomData={roomData}
+        currentUser={currentUser}
         onStartGame={handleStartGame}
         onBack={handleBackToMenu}
       />
@@ -154,6 +157,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
     return (
       <MultiplayerGameScreen
         roomData={roomData}
+        currentUser={currentUser}
         onGameComplete={handleGameComplete}
         onBack={handleBackToMenu}
       />
@@ -174,13 +178,13 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
 
         <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Titre principal */}
-          <Text style={styles.mainTitle}>Multijoueur Mondial</Text>
+          <Text style={styles.mainTitle}>{t('globalMultiplayer')}</Text>
           
           {/* Badge Multijoueur Mondial */}
           <View style={styles.globalBadge}>
-            <Text style={styles.globalText}>🌍 Multijoueur Mondial</Text>
+            <Text style={styles.globalText}>🌍 {t('globalMultiplayer')}</Text>
             <Text style={styles.globalSubtext}>
-              Jouez avec des joueurs du monde entier
+              {t('playWithWorldwidePlayers')}
             </Text>
           </View>
 
@@ -189,27 +193,27 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>{globalStats.totalPlayers}</Text>
-                <Text style={styles.statLabel}>Joueurs en ligne</Text>
+                <Text style={styles.statLabel}>{t('playersOnline')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>{globalStats.waitingRooms}</Text>
-                <Text style={styles.statLabel}>Salles en attente</Text>
+                <Text style={styles.statLabel}>{t('waitingRooms')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>{globalStats.playingRooms}</Text>
-                <Text style={styles.statLabel}>Parties en cours</Text>
+                <Text style={styles.statLabel}>{t('gamesInProgress')}</Text>
               </View>
             </View>
           )}
 
           {/* Section Nom du joueur */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Votre nom</Text>
+            <Text style={styles.sectionTitle}>{t('yourName')}</Text>
             <TextInput
               style={styles.nameInput}
               value={playerName}
               onChangeText={setPlayerName}
-              placeholder="Entrez votre nom"
+              placeholder={t('enterYourName')}
               placeholderTextColor="#999"
               maxLength={20}
             />
@@ -217,7 +221,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
 
           {/* Section Options de jeu */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Options de jeu</Text>
+            <Text style={styles.sectionTitle}>{t('gameOptions')}</Text>
             
             {/* Partie rapide */}
             <TouchableOpacity style={styles.optionCard} onPress={handleQuickMatch}>
@@ -226,9 +230,9 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
                   <MaterialIcons name="flash-on" size={32} color="#10B981" />
                 </View>
                 <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionText}>Partie rapide</Text>
+                  <Text style={styles.optionText}>{t('quickMatch')}</Text>
                   <Text style={styles.optionDescription}>
-                    Trouvez rapidement des adversaires
+                    {t('findOpponentsQuickly')}
                   </Text>
                 </View>
               </View>
@@ -241,9 +245,9 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
                   <MaterialIcons name="add-circle" size={32} color="#3B82F6" />
                 </View>
                 <View style={styles.optionTextContainer}>
-                  <Text style={styles.optionText}>Créer une salle</Text>
+                  <Text style={styles.optionText}>{t('create_room')}</Text>
                   <Text style={styles.optionDescription}>
-                    Invitez vos amis à jouer
+                    {t('inviteFriendsToPlay')}
                   </Text>
                 </View>
               </View>
@@ -252,7 +256,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
 
           {/* Section Rejoindre */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rejoindre une salle</Text>
+            <Text style={styles.sectionTitle}>{t('join_room')}</Text>
             
             {/* Zone de saisie du code de salon */}
             <View style={styles.roomCodeContainer}>
@@ -260,7 +264,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
                 style={styles.roomCodeInput}
                 value={roomCode}
                 onChangeText={setRoomCode}
-                placeholder="Code de salle (6 chiffres)"
+                placeholder={t('roomCodeSixDigits')}
                 placeholderTextColor="#999"
                 keyboardType="numeric"
                 maxLength={6}
@@ -274,7 +278,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
               disabled={!roomCode.trim()}
             >
               <Text style={[styles.joinButtonText, !roomCode.trim() && styles.joinButtonTextDisabled]}>
-                Rejoindre
+                {t('join')}
               </Text>
             </TouchableOpacity>
           </View>

@@ -18,10 +18,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { createGuestUser, createRegisteredUser } from '../utils/userUtils';
 import AuthService from '../services/AuthService';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = ({ onLogin }) => {
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [authMode, setAuthMode] = useState('guest'); // 'guest', 'email'
   const [email, setEmail] = useState('');
@@ -142,9 +144,9 @@ const LoginScreen = ({ onLogin }) => {
             ]}
           >
             <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Commencer à jouer</Text>
+              <Text style={styles.cardTitle}>{t('login_title')}</Text>
               <Text style={styles.cardSubtitle}>
-                Découvrez TypeVision et améliorez votre vitesse de frappe
+                {t('welcome')}
               </Text>
             </View>
 
@@ -159,12 +161,12 @@ const LoginScreen = ({ onLogin }) => {
                   {isLoading ? (
                     <View style={styles.loadingContainer}>
                       <Animated.View style={styles.loadingSpinner} />
-                      <Text style={styles.buttonText}>Connexion...</Text>
+                      <Text style={styles.buttonText}>{t('loading')}...</Text>
                     </View>
                   ) : (
                     <View style={styles.buttonContent}>
                       <Ionicons name="play-circle-outline" size={24} color="#FFFFFF" />
-                      <Text style={styles.buttonText}>Jouer maintenant</Text>
+                      <Text style={styles.buttonText}>{t('guest_login')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -180,7 +182,7 @@ const LoginScreen = ({ onLogin }) => {
                     onPress={() => setIsSignUp(false)}
                   >
                     <Text style={[styles.toggleButtonText, !isSignUp && styles.toggleButtonTextActive]}>
-                      Se connecter
+                      {t('login')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
@@ -188,14 +190,14 @@ const LoginScreen = ({ onLogin }) => {
                     onPress={() => setIsSignUp(true)}
                   >
                     <Text style={[styles.toggleButtonText, isSignUp && styles.toggleButtonTextActive]}>
-                      Créer un compte
+                      {t('create_account')}
                     </Text>
                   </TouchableOpacity>
                 </View>
                 
                 <TextInput
                   style={styles.input}
-                  placeholder="Adresse email"
+                  placeholder={t('email')}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -204,7 +206,7 @@ const LoginScreen = ({ onLogin }) => {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder={isSignUp ? "Mot de passe (min. 6 caractères)" : "Mot de passe"}
+                  placeholder={isSignUp ? `${t('password')} (min. 6 char.)` : t('password')}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
