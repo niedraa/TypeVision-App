@@ -24,6 +24,24 @@ import {
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import * as Crypto from 'expo-crypto';
 
+// Fonction utilitaire pour nettoyer les données Firebase (pas de undefined)
+const cleanFirebaseData = (obj) => {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value === null || typeof value !== 'object') {
+        cleaned[key] = value;
+      } else {
+        cleaned[key] = cleanFirebaseData(value);
+      }
+    }
+  }
+  return cleaned;
+};
+
 export class GlobalMultiplayerService {
   constructor() {
     this.currentRoomId = null;
@@ -157,10 +175,14 @@ export class GlobalMultiplayerService {
       
       // Si c'est notre joueur et qu'on a des infos utilisateur, les ajouter
       if (targetPlayerId === this.currentPlayerId && this.currentUser) {
-        updatedData.profileImage = this.currentUser.profileImage || updatedData.profileImage;
+        // Convertir undefined en null pour Firebase
+        updatedData.profileImage = this.currentUser.profileImage || currentData.profileImage;
       }
       
-      await set(playerRef, updatedData);
+      // Nettoyer les valeurs undefined pour Firebase
+      const cleanedData = cleanFirebaseData(updatedData);
+      
+      await set(playerRef, cleanedData);
       console.log(`✅ Informations joueur mises à jour:`, targetPlayerId, updates);
       
       return { success: true };
@@ -504,7 +526,7 @@ export class GlobalMultiplayerService {
           language: gameSettings.language || 'fr'
         },
         players: {
-          [this.currentPlayerId]: {
+          [this.currentPlayerId]: cleanFirebaseData({
             id: this.currentPlayerId,
             name: playerName,
             isReady: false,
@@ -513,8 +535,8 @@ export class GlobalMultiplayerService {
             status: 'connected',
             avatar: this.isOnline ? '🌍' : '📱',
             country: 'FR',
-            profileImage: this.currentUser?.profileImage || null
-          }
+            profileImage: this.currentUser?.profileImage
+          })
         },
         gameState: {
           status: 'waiting',
@@ -635,7 +657,7 @@ export class GlobalMultiplayerService {
           };
         }
 
-        const newPlayer = {
+        const newPlayer = cleanFirebaseData({
           id: this.currentPlayerId,
           name: playerName,
           isReady: false,
@@ -644,8 +666,8 @@ export class GlobalMultiplayerService {
           status: 'connected',
           avatar: '🌍',
           country: 'FR',
-          profileImage: this.currentUser?.profileImage || null
-        };
+          profileImage: this.currentUser?.profileImage
+        });
 
         const playerRef = ref(database, `globalRooms/${roomId}/players/${this.currentPlayerId}`);
         await set(playerRef, newPlayer);

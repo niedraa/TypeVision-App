@@ -70,7 +70,7 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
 
     // Synchronisation périodique des informations utilisateur
     const syncUserInfo = () => {
-      if (currentUser && roomData.id) {
+      if (currentUser && roomData.id && currentUser.profileImage) {
         globalMultiplayerService.updatePlayerInfo(roomData.id, null, {
           profileImage: currentUser.profileImage
         });

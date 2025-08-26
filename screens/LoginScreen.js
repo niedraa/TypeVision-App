@@ -20,6 +20,7 @@ import { createGuestUser, createRegisteredUser } from '../utils/userUtils';
 import AuthService from '../services/AuthService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withClickSound } from '../utils/useClickSound';
+import EmailVerificationScreen from './EmailVerificationScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,6 +31,8 @@ const LoginScreen = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false); // true pour créer un compte, false pour se connecter
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -87,13 +90,45 @@ const LoginScreen = ({ onLogin }) => {
         // Créer un nouveau compte
         emailUser = await AuthService.createEmailAccount(email, password);
         console.log('✅ Compte créé avec succès:', emailUser);
-        Alert.alert('Compte créé', 'Votre compte a été créé avec succès !');
+        // Vérifier si l'email de vérification a bien été envoyé
+        if (emailUser.emailSent === false) {
+          let firebaseError = '';
+          if (emailUser.firebaseUser && emailUser.firebaseUser.lastError) {
+            firebaseError = `\nErreur Firebase : ${emailUser.firebaseUser.lastError}`;
+          }
+          Alert.alert(
+            'Attention',
+            "Votre compte a été créé, mais l'email de confirmation n'a pas pu être envoyé. Vérifiez votre connexion ou réessayez plus tard. Vous pourrez demander un nouvel envoi depuis l'écran de vérification." + firebaseError
+          );
+        }
+        // Si l'email n'est pas vérifié, afficher l'écran de vérification
+        if (!emailUser.emailVerified) {
+          setPendingUser(emailUser);
+          setShowEmailVerification(true);
+          Alert.alert(
+            'Compte créé', 
+            'Votre compte a été créé avec succès ! Veuillez vérifier votre email avant de continuer.'
+          );
+        } else {
+          onLogin(emailUser);
+        }
       } else {
         // Se connecter avec un compte existant
         emailUser = await AuthService.signInWithEmail(email, password);
         console.log('✅ Connexion réussie:', emailUser);
+        
+        // Vérifier si l'email est vérifié
+        if (!emailUser.emailVerified) {
+          setPendingUser(emailUser);
+          setShowEmailVerification(true);
+          Alert.alert(
+            'Email non vérifié',
+            'Veuillez vérifier votre email avant de continuer. Un nouvel email de vérification peut être envoyé si nécessaire.'
+          );
+        } else {
+          onLogin(emailUser);
+        }
       }
-      onLogin(emailUser);
     } catch (error) {
       console.log('❌ Erreur authentification email:', error);
       Alert.alert('Erreur', error.message);
@@ -101,6 +136,29 @@ const LoginScreen = ({ onLogin }) => {
       setIsLoading(false);
     }
   };
+
+  const handleEmailVerified = () => {
+    setShowEmailVerification(false);
+    if (pendingUser) {
+      onLogin(pendingUser);
+    }
+  };
+
+  const handleBackFromVerification = () => {
+    setShowEmailVerification(false);
+    setPendingUser(null);
+  };
+
+  // Si on affiche l'écran de vérification d'email
+  if (showEmailVerification && pendingUser) {
+    return (
+      <EmailVerificationScreen
+        user={pendingUser}
+        onVerified={handleEmailVerified}
+        onBack={handleBackFromVerification}
+      />
+    );
+  }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -213,6 +271,29 @@ const LoginScreen = ({ onLogin }) => {
                   secureTextEntry
                   autoCapitalize="none"
                 />
+                {!isSignUp && (
+                  <TouchableOpacity
+                    style={{ alignSelf: 'flex-end', marginBottom: 12 }}
+                    onPress={async () => {
+                      if (!email) {
+                        Alert.alert('Mot de passe oublié', 'Veuillez entrer votre adresse email dans le champ ci-dessus.');
+                        return;
+                      }
+                      setIsLoading(true);
+                      const result = await AuthService.resetPassword(email);
+                      setIsLoading(false);
+                      if (result.success) {
+                        Alert.alert('Mot de passe oublié', 'Un email de réinitialisation a été envoyé à votre adresse. Vérifiez vos spams si vous ne le voyez pas.');
+                      } else {
+                        Alert.alert('Erreur', result.message || 'Impossible d\'envoyer l\'email de réinitialisation.');
+                      }
+                    }}
+                  >
+                    <Text style={{ color: '#2C3E50', fontSize: 14, textDecorationLine: 'underline' }}>
+                      Mot de passe oublié ?
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity 
                   style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
                   onPress={withClickSound(handleEmailAuth)}
