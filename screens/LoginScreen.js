@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createGuestUser, createRegisteredUser } from '../utils/userUtils';
 import AuthService from '../services/AuthService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withClickSound } from '../utils/useClickSound';
 
 const { width, height } = Dimensions.get('window');
 
@@ -155,7 +156,7 @@ const LoginScreen = ({ onLogin }) => {
               <View style={styles.buttonContainer}>
                 <TouchableOpacity 
                   style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-                  onPress={handleGuestLogin}
+                  onPress={withClickSound(handleGuestLogin)}
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -214,7 +215,7 @@ const LoginScreen = ({ onLogin }) => {
                 />
                 <TouchableOpacity 
                   style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
-                  onPress={handleEmailAuth}
+                  onPress={withClickSound(handleEmailAuth)}
                   disabled={isLoading}
                 >
                   {isLoading ? (

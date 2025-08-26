@@ -20,8 +20,11 @@ import { globalMultiplayerService } from '../services/globalMultiplayerService';
 import MultiplayerLobbyScreen from './MultiplayerLobbyScreen';
 import MultiplayerGameScreen from './MultiplayerGameScreen';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { withClickSound } from '../utils/useClickSound';
 
 export default function MultiplayerScreen({ onBack, currentUser }) {
+  const { theme } = useTheme();
   const { t } = useLanguage();
   const [currentScreen, setCurrentScreen] = useState('menu'); // menu, lobby, game
   const [roomCode, setRoomCode] = useState('');
@@ -30,9 +33,17 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
   const [roomData, setRoomData] = useState(null);
   const [globalStats, setGlobalStats] = useState(null);
 
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
+
   useEffect(() => {
     // Obtenir les statistiques mondiales
     loadGlobalStats();
+    
+    // Mettre à jour les informations utilisateur dans le service multijoueur
+    if (currentUser) {
+      globalMultiplayerService.updateCurrentUser(currentUser);
+    }
     
     // Nettoyage périodique des salles expirées
     globalMultiplayerService.cleanupExpiredRooms();
@@ -41,7 +52,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
     const statsInterval = setInterval(loadGlobalStats, 30000);
     
     return () => clearInterval(statsInterval);
-  }, []);
+  }, [currentUser]);
 
   const loadGlobalStats = async () => {
     try {
@@ -73,11 +84,14 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
   const handleCreateRoom = async () => {
     setLoading(true);
     try {
+      // Mise à jour des informations utilisateur avant création
+      globalMultiplayerService.updateCurrentUser(currentUser);
+      
       const result = await globalMultiplayerService.createGlobalRoom(playerName, {
         maxPlayers: 4,
         gameMode: 'race',
         difficulty: 'medium',
-        isPublic: true
+        isPublic: false
       });
       
       if (result.success) {
@@ -101,6 +115,9 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
     
     setLoading(true);
     try {
+      // Mise à jour des informations utilisateur avant jonction
+      globalMultiplayerService.updateCurrentUser(currentUser);
+      
       const result = await globalMultiplayerService.joinGlobalRoom(roomCode.trim(), playerName);
       
       if (result.success) {
@@ -171,8 +188,8 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
         
         {/* Header avec bouton retour */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
+          <TouchableOpacity style={styles.backButton} onPress={withClickSound(onBack)}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -224,7 +241,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
             <Text style={styles.sectionTitle}>{t('gameOptions')}</Text>
             
             {/* Partie rapide */}
-            <TouchableOpacity style={styles.optionCard} onPress={handleQuickMatch}>
+            <TouchableOpacity style={styles.optionCard} onPress={withClickSound(handleQuickMatch)}>
               <View style={styles.optionContent}>
                 <View style={styles.iconContainer}>
                   <MaterialIcons name="flash-on" size={32} color="#10B981" />
@@ -239,7 +256,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
             </TouchableOpacity>
 
             {/* Créer un salon */}
-            <TouchableOpacity style={styles.optionCard} onPress={handleCreateRoom}>
+            <TouchableOpacity style={styles.optionCard} onPress={withClickSound(handleCreateRoom)}>
               <View style={styles.optionContent}>
                 <View style={styles.iconContainer}>
                   <MaterialIcons name="add-circle" size={32} color="#3B82F6" />
@@ -274,7 +291,7 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
             {/* Bouton Rejoindre */}
             <TouchableOpacity 
               style={[styles.joinButton, !roomCode.trim() && styles.joinButtonDisabled]}
-              onPress={handleJoinRoom}
+              onPress={withClickSound(handleJoinRoom)}
               disabled={!roomCode.trim()}
             >
               <Text style={[styles.joinButtonText, !roomCode.trim() && styles.joinButtonTextDisabled]}>
@@ -288,10 +305,10 @@ export default function MultiplayerScreen({ onBack, currentUser }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -301,7 +318,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 20,
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -309,7 +326,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   backButton: {
     padding: 8,
@@ -322,7 +339,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 20,
   },
   globalBadge: {
@@ -354,11 +371,11 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.surface,
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -377,7 +394,7 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -413,26 +430,27 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 20,
   },
   nameInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
     marginBottom: 10,
   },
   optionCard: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e9ecef',
-    shadowColor: '#000',
+    borderColor: theme.colors.border,
+    shadowColor: theme.colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -468,11 +486,11 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
   },
   optionDescription: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 4,
   },
   roomCodeContainer: {
@@ -480,11 +498,12 @@ const styles = StyleSheet.create({
   },
   roomCodeInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.surface,
+    color: theme.colors.text,
     textAlign: 'center',
     letterSpacing: 2,
   },

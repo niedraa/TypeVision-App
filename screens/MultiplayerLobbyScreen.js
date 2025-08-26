@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
-  Share
+  Share,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 // Utiliser le service multijoueur mondial
@@ -16,14 +17,19 @@ import { globalMultiplayerService } from '../services/globalMultiplayerService';
 import { gameData } from '../data/gameData';
 import InlineCountdown from '../components/InlineCountdown';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) => {
+  const { theme } = useTheme();
   const { t } = useLanguage();
   const [players, setPlayers] = useState({});
   const [room, setRoom] = useState(roomData || {});
   const [isReady, setIsReady] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [showCountdown, setShowCountdown] = useState(false);
+
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
 
   useEffect(() => {
     // Vérifier si roomData existe et a les bonnes propriétés
@@ -62,8 +68,22 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
       }
     });
 
+    // Synchronisation périodique des informations utilisateur
+    const syncUserInfo = () => {
+      if (currentUser && roomData.id) {
+        globalMultiplayerService.updatePlayerInfo(roomData.id, null, {
+          profileImage: currentUser.profileImage
+        });
+      }
+    };
+
+    // Synchroniser immédiatement et toutes les 10 secondes
+    syncUserInfo();
+    const syncInterval = setInterval(syncUserInfo, 10000);
+
     // Cleanup au démontage
     return () => {
+      clearInterval(syncInterval);
       globalMultiplayerService.removeGlobalRoomListener(roomData.id);
     };
   }, [roomData]);
@@ -153,9 +173,18 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
       <View style={[styles.playerCard, isCurrentPlayer && styles.currentPlayerCard]}>
         <View style={styles.playerInfo}>
           <View style={styles.playerAvatar}>
-            <Text style={styles.avatarText}>
-              {player.name.charAt(0).toUpperCase()}
-            </Text>
+            {player.profileImage ? (
+              <Image 
+                source={{ uri: player.profileImage }} 
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.defaultAvatar}>
+                <Text style={styles.avatarText}>
+                  {player.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
           <View style={styles.playerDetails}>
             <Text style={styles.playerName}>
@@ -182,11 +211,11 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={leaveRoom}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Salle Multijoueur</Text>
         <TouchableOpacity style={styles.shareButton} onPress={shareRoomCode}>
-          <Ionicons name="share-outline" size={24} color="#3B82F6" />
+          <Ionicons name="share-outline" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -278,10 +307,10 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -296,7 +325,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
   },
   shareButton: {
     padding: 8,
@@ -304,11 +333,11 @@ const styles = StyleSheet.create({
   roomInfo: {
     alignItems: 'center',
     paddingVertical: 20,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -317,12 +346,12 @@ const styles = StyleSheet.create({
   roomCode: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#3B82F6',
+    color: theme.colors.primary,
     marginBottom: 8,
   },
   roomStats: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   playersSection: {
     flex: 1,
@@ -331,18 +360,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 15,
   },
   playersList: {
     flex: 1,
   },
   playerCard: {
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -350,7 +379,7 @@ const styles = StyleSheet.create({
   },
   currentPlayerCard: {
     borderWidth: 2,
-    borderColor: '#3B82F6',
+    borderColor: theme.colors.primary,
   },
   playerInfo: {
     flexDirection: 'row',
@@ -360,10 +389,21 @@ const styles = StyleSheet.create({
     width: 45,
     height: 45,
     borderRadius: 22.5,
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+  },
+  defaultAvatar: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   avatarText: {
     fontSize: 18,
@@ -376,21 +416,21 @@ const styles = StyleSheet.create({
   playerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.text,
     marginBottom: 4,
   },
   playerStatus: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
   },
   settingsSection: {
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: 'white',
+    backgroundColor: theme.colors.surface,
     marginHorizontal: 20,
     marginBottom: 20,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -404,12 +444,12 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    color: '#333',
+    color: theme.colors.text,
   },
   settingValue: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#3B82F6',
+    color: theme.colors.primary,
   },
   countdownSection: {
     paddingHorizontal: 20,

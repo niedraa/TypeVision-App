@@ -121,6 +121,55 @@ export class GlobalMultiplayerService {
     }
   }
 
+  // Mettre à jour les informations de l'utilisateur actuel
+  updateCurrentUser(userData) {
+    this.currentUser = {
+      ...this.currentUser,
+      ...userData
+    };
+    console.log('👤 Informations utilisateur mises à jour:', {
+      username: userData.username,
+      profileImage: userData.profileImage ? 'Présente' : 'Absente'
+    });
+  }
+
+  // Mettre à jour les informations complètes d'un joueur dans une salle
+  async updatePlayerInfo(roomId, playerId = null, updates = {}) {
+    try {
+      const targetPlayerId = playerId || this.currentPlayerId;
+      const playerRef = ref(database, `globalRooms/${roomId}/players/${targetPlayerId}`);
+      
+      // Récupérer les données actuelles du joueur
+      const currentPlayerSnapshot = await get(playerRef);
+      if (!currentPlayerSnapshot.exists()) {
+        console.warn('⚠️ Joueur non trouvé pour mise à jour:', targetPlayerId);
+        return { success: false, error: 'Joueur non trouvé' };
+      }
+      
+      // Fusionner avec les nouvelles données en préservant les existantes
+      const currentData = currentPlayerSnapshot.val();
+      const updatedData = {
+        ...currentData,
+        ...updates,
+        // Toujours mettre à jour le timestamp
+        lastSeen: Date.now()
+      };
+      
+      // Si c'est notre joueur et qu'on a des infos utilisateur, les ajouter
+      if (targetPlayerId === this.currentPlayerId && this.currentUser) {
+        updatedData.profileImage = this.currentUser.profileImage || updatedData.profileImage;
+      }
+      
+      await set(playerRef, updatedData);
+      console.log(`✅ Informations joueur mises à jour:`, targetPlayerId, updates);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Erreur mise à jour joueur:', error);
+      return { success: false, error: 'Erreur de mise à jour' };
+    }
+  }
+
   // Configurer la présence en ligne
   setupPresence() {
     if (!this.currentPlayerId || !database) return;
@@ -463,7 +512,8 @@ export class GlobalMultiplayerService {
             joinedAt: Date.now(),
             status: 'connected',
             avatar: this.isOnline ? '🌍' : '📱',
-            country: 'FR'
+            country: 'FR',
+            profileImage: this.currentUser?.profileImage || null
           }
         },
         gameState: {
@@ -593,7 +643,8 @@ export class GlobalMultiplayerService {
           joinedAt: Date.now(),
           status: 'connected',
           avatar: '🌍',
-          country: 'FR'
+          country: 'FR',
+          profileImage: this.currentUser?.profileImage || null
         };
 
         const playerRef = ref(database, `globalRooms/${roomId}/players/${this.currentPlayerId}`);
@@ -929,12 +980,14 @@ export class GlobalMultiplayerService {
         }
       }
       
-      const playerReadyRef = ref(database, `globalRooms/${roomId}/players/${this.currentPlayerId}/isReady`);
-      await set(playerReadyRef, isReady);
+      // Utiliser la nouvelle méthode qui préserve toutes les données joueur
+      const updateResult = await this.updatePlayerInfo(roomId, this.currentPlayerId, {
+        isReady: isReady
+      });
       
-      // Mettre à jour aussi le timestamp de dernière activité du joueur
-      const playerLastSeenRef = ref(database, `globalRooms/${roomId}/players/${this.currentPlayerId}/lastSeen`);
-      await set(playerLastSeenRef, Date.now());
+      if (!updateResult.success) {
+        return updateResult;
+      }
       
       // Mettre à jour l'activité de la salle
       const lastActivityRef = ref(database, `globalRooms/${roomId}/lastActivity`);

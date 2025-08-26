@@ -93,6 +93,9 @@ const translations = {
     'finish_in': 'Fin dans',
     'your_stats': 'Vos statistiques',
     'final_results': 'Résultats finaux',
+    'gameResults': 'Résultats de la partie',
+    'finalRanking': 'Classement final',
+    'continue': 'Continuer',
     
     // Settings
     'audio_visual': 'Audio & Visuel',
@@ -282,6 +285,9 @@ const translations = {
     'finish_in': 'Finish in',
     'your_stats': 'Your stats',
     'final_results': 'Final results',
+    'gameResults': 'Game Results',
+    'finalRanking': 'Final Ranking',
+    'continue': 'Continue',
     
     // Settings
     'audio_visual': 'Audio & Visual',

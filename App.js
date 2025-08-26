@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, StyleSheet, Text, View, StatusBar, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View, StatusBar, TouchableOpacity, Platform, Image } from 'react-native';
 import ShopScreen from './ShopScreen';
 import MultiplayerScreen from './screens/MultiplayerScreen';
 import SettingsScreen from './screens/SettingsScreen';
@@ -12,6 +12,9 @@ import { FadeTransition, ScaleTransition } from './components/Transitions';
 import { AnimatedButton } from './components/AnimatedButton';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import musicService from './services/MusicService';
+import audioService from './services/AudioService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   return (
@@ -35,12 +38,45 @@ function AppContent() {
   const styles = createStyles(theme);
 
   useEffect(() => {
+    // Initialiser et démarrer la musique de fond selon les paramètres
+    const initializeMusic = async () => {
+      try {
+        // Charger le son de clic
+        await audioService.loadClickSound();
+        
+        // Charger les paramètres utilisateur
+        const savedSettings = await AsyncStorage.getItem('userSettings');
+        let musicEnabled = true; // Par défaut activé
+        
+        if (savedSettings) {
+          const settings = JSON.parse(savedSettings);
+          musicEnabled = settings.musicEnabled !== false; // Si pas défini, par défaut true
+        }
+        
+        // Charger la musique
+        await musicService.loadMusic();
+        
+        // Démarrer seulement si activé dans les paramètres
+        if (musicEnabled) {
+          await musicService.playMusic();
+        }
+      } catch (error) {
+        console.error('Error initializing music:', error);
+      }
+    };
+
     // Simuler un temps de chargement initial
     const loadingTimer = setTimeout(() => {
       setIsLoading(false);
+      // Démarrer la musique après le chargement
+      initializeMusic();
     }, 3000); // 3 secondes de chargement
 
-    return () => clearTimeout(loadingTimer);
+    return () => {
+      clearTimeout(loadingTimer);
+      // Nettoyer la musique quand l'app se ferme
+      musicService.unloadMusic();
+    };
   }, []);
 
   const handleLogin = (user) => {
@@ -164,9 +200,24 @@ function AppContent() {
           </View>
           
           {currentUser && (
-            <Text style={styles.welcomeText}>
-              {t('welcome')}, {currentUser.username}
-            </Text>
+            <View style={styles.userWelcomeContainer}>
+              <Text style={styles.welcomeText}>
+                {t('welcome')}, {currentUser.username}
+              </Text>
+              {currentUser.profileImage && (
+                <Image 
+                  source={{ uri: currentUser.profileImage }} 
+                  style={styles.profileImageHeader}
+                />
+              )}
+              {!currentUser.profileImage && (
+                <View style={styles.defaultProfileImageHeader}>
+                  <Text style={styles.defaultProfileText}>
+                    {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : '?'}
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
         </View>
 
@@ -265,6 +316,34 @@ const createStyles = (theme) => StyleSheet.create({
     marginTop: 10,
     fontWeight: '500',
   },
+  userWelcomeContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  profileImageHeader: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginTop: 15,
+    borderWidth: 4,
+    borderColor: theme.colors.primary,
+  },
+  defaultProfileImageHeader: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 15,
+    borderWidth: 4,
+    borderColor: theme.colors.primary,
+  },
+  defaultProfileText: {
+    color: '#FFFFFF',
+    fontSize: 36,
+    fontWeight: 'bold',
+  },
   languageSelector: {
     flexDirection: 'row',
     position: 'absolute',
@@ -315,6 +394,12 @@ const createStyles = (theme) => StyleSheet.create({
   },
   profileButton: {
     marginTop: 30,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 5,
+    textAlign: 'center',
   },
   menuButtonText: {
     fontSize: 20,

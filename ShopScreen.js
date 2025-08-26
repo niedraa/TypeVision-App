@@ -3,13 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { StripeService } from './services/StripeService';
 import { AnimatedButton } from './components/AnimatedButton';
 import { useLanguage } from './contexts/LanguageContext';
+import { useTheme } from './contexts/ThemeContext';
+import { withClickSound } from './utils/useClickSound';
 
 export default function ShopScreen({ onBack }) {
+  const { theme } = useTheme();
   const { t } = useLanguage();
   const [selectedTab, setSelectedTab] = useState('Skins');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
+
+  // Styles dynamiques basés sur le thème
+  const styles = createStyles(theme);
 
   useEffect(() => {
     loadProducts();
@@ -162,7 +168,7 @@ export default function ShopScreen({ onBack }) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity onPress={withClickSound(onBack)} style={styles.backButton}>
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
           <Text style={styles.title}>{t('shop')}</Text>
@@ -215,7 +221,7 @@ export default function ShopScreen({ onBack }) {
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>{t('noProductsAvailable')}</Text>
-              <TouchableOpacity style={styles.refreshButton} onPress={loadProducts}>
+              <TouchableOpacity style={styles.refreshButton} onPress={withClickSound(loadProducts)}>
                 <Text style={styles.refreshButtonText}>{t('refresh')}</Text>
               </TouchableOpacity>
             </View>
@@ -233,10 +239,10 @@ export default function ShopScreen({ onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: theme.colors.background,
     minHeight: '100vh', // Safari fix
   },
   header: {
@@ -259,13 +265,13 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 24,
-    color: '#2C3E50',
+    color: theme.colors.text,
     lineHeight: 24,
   },
   title: {
     fontSize: 32,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: theme.colors.text,
     textAlign: 'center',
   },
   placeholder: {
@@ -282,7 +288,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: theme.colors.surface,
     marginHorizontal: 5,
     borderRadius: 20,
     alignItems: 'center',
@@ -292,16 +298,16 @@ const styles = StyleSheet.create({
     outline: 'none',
   },
   activeTab: {
-    backgroundColor: '#CBD5E0',
+    backgroundColor: theme.colors.primary,
   },
   tabText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#4A5568',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   activeTabText: {
-    color: '#2C3E50',
+    color: theme.colors.background,
   },
   content: {
     flex: 1,
@@ -438,26 +444,26 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: theme.colors.text,
     marginBottom: 5,
     textAlign: 'center',
   },
   itemDescription: {
     fontSize: 14,
-    color: '#718096',
+    color: theme.colors.textSecondary,
     marginBottom: 8,
     textAlign: 'center',
     minHeight: 32,
   },
   itemPrice: {
     fontSize: 16,
-    color: '#4A5568',
+    color: theme.colors.textSecondary,
     fontWeight: '500',
     textAlign: 'center',
     marginBottom: 10,
   },
   purchaseButton: {
-    backgroundColor: '#4299E1',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 15,
@@ -467,10 +473,10 @@ const styles = StyleSheet.create({
     WebkitBoxAlign: 'center',
   },
   purchaseButtonDisabled: {
-    backgroundColor: '#A0AEC0',
+    backgroundColor: theme.colors.textSecondary,
   },
   purchaseButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.background,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -485,7 +491,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 20,
     fontSize: 16,
-    color: '#4A5568',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
   },
   emptyState: {
@@ -499,19 +505,19 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 18,
-    color: '#718096',
+    color: theme.colors.textSecondary,
     marginBottom: 20,
     textAlign: 'center',
   },
   refreshButton: {
-    backgroundColor: '#4299E1',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 20,
     WebkitBorderRadius: 20,
   },
   refreshButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.background,
     fontSize: 16,
     fontWeight: '500',
     textAlign: 'center',

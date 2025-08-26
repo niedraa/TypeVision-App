@@ -16,6 +16,7 @@ import { globalMultiplayerService } from '../services/globalMultiplayerService';
 import UserStatsService from '../services/UserStatsService';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import LeaderboardAnimation from '../components/LeaderboardAnimation';
 
 export default function MultiplayerGameScreen({ route, navigation, roomData, currentUser, onGameComplete, onBack }) {
   // Support pour les deux façons d'appeler le composant
@@ -468,69 +469,73 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, cur
     });
   };
 
-  const renderResults = () => {
-    const currentPlayerId = globalMultiplayerService.currentPlayerId;
-    
-    return (
-      <View style={styles.resultsContainer}>
-        <Text style={styles.resultsTitle}>🏆 Résultats de la partie</Text>
-        {finalRanking.map((player, index) => {
-          const isCurrentPlayer = player.id === currentPlayerId;
-          return (
-            <View key={player.id} style={[
-              styles.resultItem,
-              isCurrentPlayer && styles.currentPlayerResult,
-              { borderLeftColor: player.color || '#ccc', borderLeftWidth: 4 }
-            ]}>
-              <View style={styles.resultRankContainer}>
-                <Text style={[
-                  styles.resultPosition,
-                  index === 0 && styles.firstPlace,
-                  index === 1 && styles.secondPlace,
-                  index === 2 && styles.thirdPlace
-                ]}>
-                  #{player.rank}
-                </Text>
-                {index === 0 && <Text style={styles.crownEmoji}>👑</Text>}
-              </View>
-              <View style={styles.resultPlayerInfo}>
-                <View style={styles.resultNameContainer}>
-                  <View 
-                    style={[
-                      styles.playerColorDot, 
-                      { backgroundColor: player.color || '#ccc' }
-                    ]} 
-                  />
-                  <Text style={styles.resultName}>
-                    {player.name}
-                    {isCurrentPlayer && ' (Vous)'}
-                  </Text>
-                </View>
-                <Text style={styles.resultStats}>
-                  {player.finalWpm || 0} WPM • {player.finalAccuracy || 100}% • 
-                  {Math.round((player.completionTime || 0) / 1000)}s
-                </Text>
-              </View>
-            </View>
-          );
-        })}
-        
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={onBack}
-        >
-          <Text style={styles.backButtonText}>{t('back_to_lobby')}</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
   if (showResults) {
+    // Convertir finalRanking en format attendu par LeaderboardAnimation
+    let playersForAnimation = [];
+    
+    if (finalRanking && finalRanking.length > 0) {
+      // Utiliser le classement final si disponible
+      playersForAnimation = finalRanking.map(player => ({
+        id: player.id,
+        username: player.name,
+        score: Math.round(player.finalWpm || 0), // Utiliser WPM comme score
+        wpm: player.finalWpm || 0,
+        accuracy: player.finalAccuracy || 100,
+        profileImage: player.profileImage || null,
+        completionTime: player.completionTime
+      }));
+    } else {
+      // Fallback : utiliser les données des joueurs actuels
+      console.log('🔄 Fallback: Utilisation des données de players pour le classement');
+      const playersList = Object.values(players);
+      playersForAnimation = playersList
+        .map(player => ({
+          id: player.id,
+          username: player.name,
+          score: Math.round(player.wpm || 0),
+          wpm: player.wpm || 0,
+          accuracy: player.accuracy || 100,
+          profileImage: player.profileImage || null,
+          completionTime: player.completionTime || 0
+        }))
+        .sort((a, b) => {
+          // Tri par score (WPM), puis par précision, puis par temps
+          if (b.score !== a.score) return b.score - a.score;
+          if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+          return a.completionTime - b.completionTime;
+        });
+    }
+
+    console.log('🏆 Données du classement final:', playersForAnimation);
+
+    const gameStats = {
+      duration: gameText.length > 0 ? Math.round((Date.now() - startTime) / 1000) : 0,
+      totalCharacters: gameText.length,
+      averageWpm: Math.round(playersForAnimation.reduce((sum, p) => sum + p.wpm, 0) / playersForAnimation.length)
+    };
+
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
-        {renderResults()}
-      </SafeAreaView>
+      <>
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" />
+          <View style={styles.gameContainer}>
+            {/* Garder l'interface de jeu en arrière-plan */}
+            <ScrollView 
+              style={styles.playersProgress}
+              showsVerticalScrollIndicator={false}
+            >
+              {renderPlayerProgress()}
+            </ScrollView>
+          </View>
+        </SafeAreaView>
+        
+        {/* Animation de classement par-dessus */}
+        <LeaderboardAnimation
+          players={playersForAnimation}
+          gameStats={gameStats}
+          onClose={onBack}
+        />
+      </>
     );
   }
 

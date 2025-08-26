@@ -19,12 +19,15 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import musicService from '../services/MusicService';
+import { withClickSound } from '../utils/useClickSound';
 
 export default function SettingsScreen({ onBack }) {
   const { theme, isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const [settings, setSettings] = useState({
     soundEnabled: true,
+    musicEnabled: true,
     vibrationEnabled: true,
     darkModeEnabled: isDark,
     highContrastEnabled: false,
@@ -84,6 +87,17 @@ export default function SettingsScreen({ onBack }) {
     if (settingKey === 'soundEnabled') {
       // Ici on pourrait jouer un son de test
       Alert.alert('Sons', newSettings.soundEnabled ? 'Sons activés' : 'Sons désactivés');
+    }
+
+    if (settingKey === 'musicEnabled') {
+      // Contrôler la musique de fond
+      if (newSettings.musicEnabled) {
+        musicService.playMusic();
+        Alert.alert('🎵 Musique', 'Musique de fond activée');
+      } else {
+        musicService.pauseMusic();
+        Alert.alert('🎵 Musique', 'Musique de fond désactivée');
+      }
     }
 
     if (settingKey === 'darkModeEnabled') {
@@ -218,7 +232,7 @@ export default function SettingsScreen({ onBack }) {
   const SettingItem = ({ icon, title, subtitle, hasSwitch, switchValue, onToggle, onPress, textColor, showArrow = false }) => (
     <TouchableOpacity 
       style={styles.settingItem} 
-      onPress={onPress}
+      onPress={onPress ? withClickSound(onPress) : undefined}
       disabled={hasSwitch}
     >
       <View style={styles.settingLeft}>
@@ -256,7 +270,7 @@ export default function SettingsScreen({ onBack }) {
         
         {/* Header avec bouton retour */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <TouchableOpacity style={styles.backButton} onPress={withClickSound(onBack)}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('settings')}</Text>
@@ -274,6 +288,14 @@ export default function SettingsScreen({ onBack }) {
               hasSwitch
               switchValue={settings.soundEnabled}
               onToggle={() => toggleSetting('soundEnabled')}
+            />
+            <SettingItem
+              icon={<Ionicons name="musical-notes" size={24} color={theme.colors.text} />}
+              title="Musique de fond"
+              subtitle="Musique d'ambiance du jeu"
+              hasSwitch
+              switchValue={settings.musicEnabled}
+              onToggle={() => toggleSetting('musicEnabled')}
             />
             <SettingItem
               icon={<MaterialIcons name="vibration" size={24} color={theme.colors.text} />}
