@@ -24,7 +24,15 @@ export const useClickSound = (originalOnPress) => {
  */
 export const withClickSound = (onPress) => {
   return (...args) => {
-    audioService.playClickSound();
+    // Désactive le son si soundEnabled est false dans les settings
+    try {
+      const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+      if (settings.soundEnabled !== false) {
+        audioService.playClickSound();
+      }
+    } catch (e) {
+      audioService.playClickSound();
+    }
     if (onPress) {
       onPress(...args);
     }

@@ -470,25 +470,40 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, cur
   };
 
   if (showResults) {
-    // Convertir finalRanking en format attendu par LeaderboardAnimation
+
+    // Inclure tous les joueurs dans le classement, même ceux qui n'ont pas fini
+    let allPlayers = Object.values(players);
+    let finishedIds = (finalRanking || []).map(p => p.id);
+    // Ajoute les joueurs non terminés à la fin, triés par progression
+    let unfinished = allPlayers.filter(p => !finishedIds.includes(p.id));
+    unfinished = unfinished.sort((a, b) => (b.currentIndex || 0) - (a.currentIndex || 0));
+
+    // Construit le classement complet
     let playersForAnimation = [];
-    
     if (finalRanking && finalRanking.length > 0) {
-      // Utiliser le classement final si disponible
-      playersForAnimation = finalRanking.map(player => ({
-        id: player.id,
-        username: player.name,
-        score: Math.round(player.finalWpm || 0), // Utiliser WPM comme score
-        wpm: player.finalWpm || 0,
-        accuracy: player.finalAccuracy || 100,
-        profileImage: player.profileImage || null,
-        completionTime: player.completionTime
-      }));
+      playersForAnimation = [
+        ...finalRanking.map(player => ({
+          id: player.id,
+          username: player.name,
+          score: Math.round(player.finalWpm || 0),
+          wpm: player.finalWpm || 0,
+          accuracy: player.finalAccuracy || 100,
+          profileImage: player.profileImage || null,
+          completionTime: player.completionTime
+        })),
+        ...unfinished.map(player => ({
+          id: player.id,
+          username: player.name,
+          score: Math.round(player.wpm || 0),
+          wpm: player.wpm || 0,
+          accuracy: player.accuracy || 100,
+          profileImage: player.profileImage || null,
+          completionTime: player.completionTime || 0
+        }))
+      ];
     } else {
-      // Fallback : utiliser les données des joueurs actuels
-      console.log('🔄 Fallback: Utilisation des données de players pour le classement');
-      const playersList = Object.values(players);
-      playersForAnimation = playersList
+      // Fallback : tous les joueurs triés par progression
+      playersForAnimation = allPlayers
         .map(player => ({
           id: player.id,
           username: player.name,
@@ -499,7 +514,6 @@ export default function MultiplayerGameScreen({ route, navigation, roomData, cur
           completionTime: player.completionTime || 0
         }))
         .sort((a, b) => {
-          // Tri par score (WPM), puis par précision, puis par temps
           if (b.score !== a.score) return b.score - a.score;
           if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
           return a.completionTime - b.completionTime;

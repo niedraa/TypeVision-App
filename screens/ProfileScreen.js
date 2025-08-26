@@ -416,23 +416,8 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
           {/* Actions du compte */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Compte</Text>
-            
-            <AnimatedButton style={styles.actionButton} onPress={handleEditProfile}>
-              <Text style={styles.actionButtonText}>Modifier le profil</Text>
-            </AnimatedButton>
-
-            {!user?.isGuest && (
-              <AnimatedButton style={styles.actionButton} onPress={handleChangePassword}>
-                <Text style={styles.actionButtonText}>Changer le mot de passe</Text>
-              </AnimatedButton>
-            )}
-
             <AnimatedButton style={styles.logoutButton} onPress={onLogout}>
               <Text style={styles.logoutButtonText}>Se déconnecter</Text>
-            </AnimatedButton>
-
-            <AnimatedButton style={styles.deleteButton} onPress={handleDeleteAccount}>
-              <Text style={styles.deleteButtonText}>Supprimer le compte</Text>
             </AnimatedButton>
           </View>
 

@@ -163,6 +163,17 @@ const TypingGameScreen = ({ level, world, onBack, onComplete }) => {
     if (!isGameActive && !startTime) {
       startGame();
     }
+    // Vibration à chaque touche si activé
+    try {
+      const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+      if (settings.vibrationEnabled) {
+        if (typeof window === 'undefined' && global && global.navigator && global.navigator.vibrate) {
+          global.navigator.vibrate(10);
+        } else if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+          window.navigator.vibrate(10);
+        }
+      }
+    } catch (e) {}
 
     // Système de correction obligatoire - logique stricte
     let validText = '';

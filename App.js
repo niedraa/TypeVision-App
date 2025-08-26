@@ -231,8 +231,18 @@ function AppContent() {
           </AnimatedButton>
 
           <AnimatedButton
-            style={styles.menuButton}
-            onPress={() => setCurrentScreen('shop')}
+            style={[styles.menuButton, currentUser?.isGuest && { opacity: 0.5 }]} 
+            onPress={() => {
+              if (currentUser?.isGuest) {
+                Alert.alert(
+                  'Boutique indisponible',
+                  'La boutique est réservée aux comptes enregistrés. Connectez-vous ou créez un compte pour acheter et sauvegarder vos items.'
+                );
+                return;
+              }
+              setCurrentScreen('shop');
+            }}
+            disabled={currentUser?.isGuest}
           >
             <Text style={styles.menuButtonText}>{t('shop')}</Text>
           </AnimatedButton>

@@ -314,12 +314,6 @@ export default function SettingsScreen({ onBack }) {
               onToggle={() => toggleSetting('darkModeEnabled')}
             />
             <SettingItem
-              icon={<MaterialIcons name="contrast" size={24} color={theme.colors.text} />}
-              title={t('high_contrast')}
-              subtitle={t('improve_readability')}
-              hasSwitch
-              switchValue={settings.highContrastEnabled}
-              onToggle={() => toggleSetting('highContrastEnabled')}
             />
           </View>
 
@@ -340,48 +334,23 @@ export default function SettingsScreen({ onBack }) {
           <SectionHeader title={t('support')} />
           <View style={styles.section}>
             <SettingItem
-              icon={<MaterialIcons name="help" size={24} color={theme.colors.text} />}
-              title={t('help')}
-              subtitle={t('help_desc')}
-              onPress={openHelp}
-              showArrow
-            />
-            <SettingItem
-              icon={<MaterialIcons name="feedback" size={24} color={theme.colors.text} />}
-              title={t('report_bug')}
-              subtitle={t('report_bug_desc')}
-              onPress={reportProblem}
-              showArrow
-            />
-            <SettingItem
               icon={<MaterialIcons name="star-rate" size={24} color={theme.colors.text} />}
               title={t('rate_app')}
               subtitle={t('rate_app_desc')}
               onPress={rateApp}
               showArrow
             />
+            <SettingItem
+              icon={<MaterialIcons name="mail" size={24} color={theme.colors.text} />}
+              title={"Contactez-nous"}
+              subtitle={"Écrivez-nous un email"}
+              onPress={() => Linking.openURL('mailto:penra.contact@gmail.com?subject=Support%20TypeVision')}
+              showArrow
+            />
           </View>
 
           {/* Section Actions */}
-          <SectionHeader title={t('account_section')} />
-          <View style={styles.section}>
-            <SettingItem
-              icon={<MaterialIcons name="refresh" size={24} color={theme.colors.warning} />}
-              title={t('reset_progress')}
-              subtitle={t('reset_progress_desc')}
-              textColor={theme.colors.warning}
-              onPress={handleResetProgress}
-              showArrow
-            />
-            <SettingItem
-              icon={<MaterialIcons name="delete-forever" size={24} color="#F44336" />}
-              title={t('delete_account')}
-              subtitle={t('delete_account_desc')}
-              textColor="#F44336"
-              onPress={handleDeleteAccount}
-              showArrow
-            />
-          </View>
+          {/* Section compte supprimée */}
 
           {/* Informations sur l'application */}
           <View style={styles.appInfo}>
