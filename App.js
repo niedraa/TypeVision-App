@@ -34,6 +34,15 @@ function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Liste des avatars disponibles
+  const availableAvatars = [
+    { id: 'default1', name: 'Avatar 1', source: require('./assets/avatars/default1.png') },
+    { id: 'default2', name: 'Avatar 2', source: require('./assets/avatars/default2.png') },
+    { id: 'default3', name: 'Avatar 3', source: require('./assets/avatars/default3.png') },
+    { id: 'default4', name: 'Avatar 4', source: require('./assets/avatars/default4.png') },
+    { id: 'default5', name: 'Avatar 5', source: require('./assets/avatars/default5.png') },
+  ];
+
   // Styles dynamiques basés sur le thème
   const styles = createStyles(theme);
 
@@ -205,10 +214,11 @@ function AppContent() {
                 {t('welcome')}, {currentUser.username}
               </Text>
               {currentUser.profileImage && (
-                <Image 
-                  source={{ uri: currentUser.profileImage }} 
-                  style={styles.profileImageHeader}
-                />
+                (availableAvatars.some(avatar => avatar.id === currentUser.profileImage) ? (
+                  <Image source={availableAvatars.find(avatar => avatar.id === currentUser.profileImage).source} style={styles.profileImageHeader} />
+                ) : (
+                  <Image source={{ uri: currentUser.profileImage }} style={styles.profileImageHeader} />
+                ))
               )}
               {!currentUser.profileImage && (
                 <View style={styles.defaultProfileImageHeader}>

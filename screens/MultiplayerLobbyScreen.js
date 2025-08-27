@@ -28,6 +28,15 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
   const [isHost, setIsHost] = useState(false);
   const [showCountdown, setShowCountdown] = useState(false);
 
+  // Liste des avatars disponibles
+  const availableAvatars = [
+    { id: 'default1', name: 'Avatar 1', source: require('../assets/avatars/default1.png') },
+    { id: 'default2', name: 'Avatar 2', source: require('../assets/avatars/default2.png') },
+    { id: 'default3', name: 'Avatar 3', source: require('../assets/avatars/default3.png') },
+    { id: 'default4', name: 'Avatar 4', source: require('../assets/avatars/default4.png') },
+    { id: 'default5', name: 'Avatar 5', source: require('../assets/avatars/default5.png') },
+  ];
+
   // Styles dynamiques basés sur le thème
   const styles = createStyles(theme);
 
@@ -174,10 +183,11 @@ const MultiplayerLobbyScreen = ({ roomData, currentUser, onStartGame, onBack }) 
         <View style={styles.playerInfo}>
           <View style={styles.playerAvatar}>
             {player.profileImage ? (
-              <Image 
-                source={{ uri: player.profileImage }} 
-                style={styles.avatarImage}
-              />
+              availableAvatars.some(avatar => avatar.id === player.profileImage) ? (
+                <Image source={availableAvatars.find(avatar => avatar.id === player.profileImage).source} style={styles.avatarImage} />
+              ) : (
+                <Image source={{ uri: player.profileImage }} style={styles.avatarImage} />
+              )
             ) : (
               <View style={styles.defaultAvatar}>
                 <Text style={styles.avatarText}>

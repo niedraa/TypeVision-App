@@ -9,7 +9,9 @@ import {
   Alert,
   Image,
   TouchableOpacity,
-  Platform
+  Platform,
+  Modal,
+  FlatList
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -30,6 +32,19 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
   const [achievements, setAchievements] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // États pour la modal de sélection d'avatar
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+
+  // Liste des avatars disponibles
+  const availableAvatars = [
+    { id: 'default1', name: 'Avatar 1', source: require('../assets/avatars/default1.png') },
+    { id: 'default2', name: 'Avatar 2', source: require('../assets/avatars/default2.png') },
+    { id: 'default3', name: 'Avatar 3', source: require('../assets/avatars/default3.png') },
+    { id: 'default4', name: 'Avatar 4', source: require('../assets/avatars/default4.png') },
+    { id: 'default5', name: 'Avatar 5', source: require('../assets/avatars/default5.png') },
+  ];
 
   // Styles dynamiques basés sur le thème
   const styles = createStyles(theme);
@@ -160,6 +175,53 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
 
   const handleChangePassword = () => {
     Alert.alert('Mot de passe', 'Fonctionnalité de changement de mot de passe bientôt disponible');
+  };
+
+  const showAvatarOptions = () => {
+    setShowOptionsModal(true);
+  };
+
+  const selectAvatar = () => {
+    setShowAvatarModal(true);
+  };
+
+  const handleAvatarSelected = (avatar) => {
+    setAvatar(avatar.source);
+    setShowAvatarModal(false);
+  };
+
+  const handleGallerySelect = () => {
+    setShowOptionsModal(false);
+    pickImage();
+  };
+
+  const handleDefaultAvatarsSelect = () => {
+    setShowOptionsModal(false);
+    setShowAvatarModal(true);
+  };
+
+  const setAvatar = async (avatarSource) => {
+    try {
+      // On stocke l'ID de l'avatar (ex: 'default5')
+      const avatarId = availableAvatars.find(avatar => avatar.source === avatarSource)?.id;
+      if (!avatarId) throw new Error('Avatar inconnu');
+      setProfileImage(avatarId);
+      if (user?.id) {
+        const saved = await UserDataService.saveProfileImage(user.id, avatarId);
+        if (!saved) {
+          try {
+            await AsyncStorage.setItem(`profileImage_${user.id}`, avatarId);
+          } catch (error) {}
+        }
+      }
+      if (onUpdateUser) {
+        const updatedUser = { ...user, profileImage: avatarId };
+        onUpdateUser(updatedUser);
+      }
+      Alert.alert('Succès', 'Avatar mis à jour !');
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de changer l\'avatar : ' + error.message);
+    }
   };
 
   const pickImage = async () => {
@@ -341,9 +403,13 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Header Profile */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
+            <TouchableOpacity style={styles.avatarContainer} onPress={showAvatarOptions}>
               {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                availableAvatars.some(avatar => avatar.id === profileImage) ? (
+                  <Image source={availableAvatars.find(avatar => avatar.id === profileImage).source} style={styles.avatarImage} />
+                ) : (
+                  <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                )
               ) : (
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
@@ -360,7 +426,7 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
             <Text style={styles.userType}>
               {user?.isGuest ? t('guest_user') : t('user_profile')}
             </Text>
-            <TouchableOpacity style={styles.changePhotoButton} onPress={pickImage}>
+            <TouchableOpacity style={styles.changePhotoButton} onPress={showAvatarOptions}>
               <Text style={styles.changePhotoText}>{t('change_avatar')}</Text>
             </TouchableOpacity>
           </View>
@@ -425,6 +491,89 @@ const ProfileScreen = ({ onBack, user, onUpdateUser, onLogout }) => {
             <Text style={styles.footerText}>TypeVision v1.0.0</Text>
           </View>
         </ScrollView>
+
+        {/* Modal de sélection d'avatar */}
+        <Modal
+          visible={showAvatarModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowAvatarModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.avatarModalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Choisir un avatar</Text>
+                <TouchableOpacity 
+                  style={styles.closeButton}
+                  onPress={() => setShowAvatarModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <FlatList
+                data={availableAvatars}
+                numColumns={2}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.avatarGrid}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={[
+                      styles.avatarOption,
+                      profileImage === item.id && styles.selectedAvatar
+                    ]}
+                    onPress={() => handleAvatarSelected(item)}
+                  >
+                    <Image source={item.source} style={styles.avatarPreview} />
+                    <Text style={styles.avatarOptionText}>{item.name}</Text>
+                    {profileImage === item.id && (
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedBadgeText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal d'options */}
+        <Modal
+          visible={showOptionsModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowOptionsModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.optionsModalContent}>
+              <Text style={styles.optionsModalTitle}>Changer d'avatar</Text>
+              
+              <TouchableOpacity 
+                style={styles.optionButton}
+                onPress={handleGallerySelect}
+              >
+                <Text style={styles.optionIcon}>📷</Text>
+                <Text style={styles.optionText}>Depuis la galerie</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.optionButton}
+                onPress={handleDefaultAvatarsSelect}
+              >
+                <Text style={styles.optionIcon}>🎭</Text>
+                <Text style={styles.optionText}>Avatars par défaut</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.cancelOptionButton}
+                onPress={() => setShowOptionsModal(false)}
+              >
+                <Text style={styles.cancelOptionText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </SlideTransition>
   );
@@ -740,6 +889,152 @@ const createStyles = (theme) => StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  // Styles pour les modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalContent: {
+    backgroundColor: theme.colors.background,
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxHeight: '70%',
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: theme.colors.text,
+    fontWeight: '600',
+  },
+  avatarGrid: {
+    paddingVertical: 10,
+  },
+  avatarOption: {
+    flex: 1,
+    alignItems: 'center',
+    margin: 10,
+    padding: 15,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  selectedAvatar: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '10',
+  },
+  avatarPreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 10,
+  },
+  avatarOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text,
+    textAlign: 'center',
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedBadgeText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  optionsModalContent: {
+    backgroundColor: theme.colors.background,
+    borderRadius: 20,
+    padding: 25,
+    width: '80%',
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  optionsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginBottom: 25,
+  },
+  optionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    padding: 20,
+    borderRadius: 15,
+    marginBottom: 15,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  optionIcon: {
+    fontSize: 24,
+    marginRight: 15,
+  },
+  optionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  cancelOptionButton: {
+    backgroundColor: 'transparent',
+    padding: 15,
+    alignItems: 'center',
+  },
+  cancelOptionText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
 });
 
